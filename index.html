@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lejar Akreditasi</title>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+body{font-family:system-ui,-apple-system,Arial;background:#f6f7fb;margin:0;padding:20px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 10px rgba(0,0,0,0.05)}
+button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
+button.primary{background:#2563eb;color:#fff;border:none}
+input,select{padding:6px;border-radius:6px;border:1px solid #ddd}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+th{background:#f3f4f6}
+.hidden{display:none}
+.badge{padding:4px 8px;border-radius:20px;font-size:12px}
+.badge.ADMIN{background:#dcfce7;color:#166534}
+.badge.VIEWER{background:#e0f2fe;color:#075985}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>Lejar Akreditasi</h2>
+<div id="loginSection">
+<div id="gbtn"></div>
+</div>
+
+<div id="userInfo" class="hidden">
+<span id="userEmail"></span>
+<span id="userRole" class="badge"></span>
+<button id="btnLogout">Logout</button>
+</div>
+</div>
+
+<div id="mainSection" class="hidden">
+
+<div class="card">
+<h3>Senarai Waran</h3>
+<div id="adminWaranForm" class="hidden">
+<input id="wNo" placeholder="No Waran"/>
+<input id="wPerihal" placeholder="Perihal"/>
+<input id="wJumlah" type="number" placeholder="Jumlah"/>
+<button class="primary" id="btnAddWaran">Tambah Waran</button>
+</div>
+<br/>
+<table>
+<thead>
+<tr>
+<th>WaranID</th>
+<th>NoWaran</th>
+<th>Perihal</th>
+<th>Jumlah</th>
+</tr>
+</thead>
+<tbody id="waranTable"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h3>Belanja (ikut Waran)</h3>
+<div id="adminBelanjaForm" class="hidden">
+<input id="bPerihal" placeholder="Perihal"/>
+<input id="bAmaun" type="number" placeholder="Amaun"/>
+<select id="bStatus">
+<option>KERTAS KERJA</option>
+<option>HANTAR PERMOHONAN</option>
+<option>SELESAI</option>
+<option>BATAL</option>
+</select>
+<button class="primary" id="btnAddBelanja">Tambah Belanja</button>
+</div>
+<br/>
+<table>
+<thead>
+<tr>
+<th>BelanjaID</th>
+<th>Perihal</th>
+<th>Amaun</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="belanjaTable"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+
+// ================== CONFIG ==================
+const BASE_URL = "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec";
+
+const GOOGLE_CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+
+// ============================================
+
+let sessionToken = localStorage.getItem("LA_TOKEN") || "";
+let currentWaranId = null;
+let currentNoWaran = null;
+let currentRole = null;
+
+// ================= API =================
+async function apiGet(action, params={}){
+const url = new URL(BASE_URL);
+url.searchParams.set("action",action);
+url.searchParams.set("token",sessionToken);
+Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+const res = await fetch(url.toString());
+return res.json();
+}
+
+async function apiPost(action, body={}){
+const url = new URL(BASE_URL);
+url.searchParams.set("action",action);
+url.searchParams.set("token",sessionToken);
+const res = await fetch(url.toString(),{
+method:"POST",
+headers:{"Content-Type":"text/plain;charset=utf-8"},
+body:JSON.stringify(body)
+});
+return res.json();
+}
+
+// ============= GOOGLE LOGIN =============
+function onGoogleCredential(response){
+apiPost("googleLogin",{idToken:response.credential})
+.then(out=>{
+if(!out.ok){alert(out.error);return;}
+sessionToken = out.token;
+localStorage.setItem("LA_TOKEN",sessionToken);
+showUser(out.user);
+loadWaran();
+})
+.catch(err=>alert(err));
+}
+
+window.onload = ()=>{
+google.accounts.id.initialize({
+client_id:GOOGLE_CLIENT_ID,
+callback:onGoogleCredential
+});
+google.accounts.id.renderButton(
+document.getElementById("gbtn"),
+{theme:"outline",size:"large"}
+);
+
+if(sessionToken){
+apiGet("me").then(res=>{
+if(res.ok){
+showUser(res.user);
+loadWaran();
+}else{
+localStorage.removeItem("LA_TOKEN");
+}
+});
+}
+};
+
+function showUser(user){
+currentRole = user.role;
+document.getElementById("loginSection").classList.add("hidden");
+document.getElementById("mainSection").classList.remove("hidden");
+document.getElementById("userInfo").classList.remove("hidden");
+document.getElementById("userEmail").textContent = user.email;
+document.getElementById("userRole").textContent = user.role;
+document.getElementById("userRole").classList.add(user.role);
+
+if(user.role==="ADMIN"){
+document.getElementById("adminWaranForm").classList.remove("hidden");
+document.getElementById("adminBelanjaForm").classList.remove("hidden");
+}
+}
+
+document.getElementById("btnLogout").onclick = ()=>{
+localStorage.removeItem("LA_TOKEN");
+location.reload();
+};
+
+// ============= WARAN =============
+async function loadWaran(){
+const res = await apiGet("listWaran");
+if(!res.ok){alert(res.error);return;}
+
+const tbody = document.getElementById("waranTable");
+tbody.innerHTML="";
+
+res.data.forEach(w=>{
+const tr=document.createElement("tr");
+tr.innerHTML=`
+<td>${w.WaranID}</td>
+<td>${w.NoWaran}</td>
+<td>${w.Perihal}</td>
+<td>${w.JumlahWaran}</td>
+`;
+tr.onclick=()=>{
+currentWaranId=w.WaranID;
+currentNoWaran=w.NoWaran;
+loadBelanja(w.WaranID);
+};
+tbody.appendChild(tr);
+});
+}
+
+document.getElementById("btnAddWaran").onclick=async()=>{
+const body={
+NoWaran:document.getElementById("wNo").value,
+Perihal:document.getElementById("wPerihal").value,
+JumlahWaran:document.getElementById("wJumlah").value
+};
+const res=await apiPost("createWaran",body);
+if(res.ok) loadWaran();
+else alert(res.error);
+};
+
+// ============= BELANJA =============
+async function loadBelanja(waranId){
+const res=await apiGet("listBelanja",{waranId});
+if(!res.ok){alert(res.error);return;}
+
+const tbody=document.getElementById("belanjaTable");
+tbody.innerHTML="";
+
+res.data.forEach(b=>{
+const tr=document.createElement("tr");
+tr.innerHTML=`
+<td>${b.BelanjaID}</td>
+<td>${b.Perihal}</td>
+<td>${b.Amaun}</td>
+<td>${b.StatusBelanja}</td>
+`;
+tbody.appendChild(tr);
+});
+}
+
+document.getElementById("btnAddBelanja").onclick=async()=>{
+if(!currentNoWaran){alert("Pilih waran dahulu.");return;}
+
+const body={
+NoWaran:currentNoWaran,
+Perihal:document.getElementById("bPerihal").value,
+Amaun:document.getElementById("bAmaun").value,
+StatusBelanja:document.getElementById("bStatus").value
+};
+const res=await apiPost("createBelanja",body);
+if(res.ok) loadBelanja(currentWaranId);
+else alert(res.error);
+};
+
+</script>
+
+</body>
+</html>
