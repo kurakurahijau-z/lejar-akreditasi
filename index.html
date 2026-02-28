@@ -1,258 +1,477 @@
 <!doctype html>
 <html lang="ms">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Lejar Akreditasi</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lejar Akreditasi</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
-<style>
-body{font-family:system-ui,-apple-system,Arial;background:#f6f7fb;margin:0;padding:20px}
-.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 10px rgba(0,0,0,0.05)}
-button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
-button.primary{background:#2563eb;color:#fff;border:none}
-input,select{padding:6px;border-radius:6px;border:1px solid #ddd}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
-th{background:#f3f4f6}
-.hidden{display:none}
-.badge{padding:4px 8px;border-radius:20px;font-size:12px}
-.badge.ADMIN{background:#dcfce7;color:#166534}
-.badge.VIEWER{background:#e0f2fe;color:#075985}
-</style>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --muted:#6b7280; --text:#111827;
+      --line:#e5e7eb; --blue:#2563eb; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);margin:0;padding:20px;color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto}
+    .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 6px 14px rgba(0,0,0,.06)}
+    h1,h2,h3{margin:0 0 10px 0}
+    h1{font-size:26px}
+    h3{font-size:16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .spacer{flex:1}
+    button{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer}
+    button.primary{background:var(--blue);color:#fff;border:none}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    input,select{padding:9px 10px;border-radius:10px;border:1px solid var(--line);min-width:160px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:14px;vertical-align:top}
+    th{background:#f3f4f6;font-weight:600}
+    .muted{color:var(--muted);font-size:13px}
+    .badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--line);background:#f9fafb}
+    .badge.ADMIN{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+    .badge.VIEWER{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+    .pill{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .pill.ok{background:#dcfce7;color:#166534}
+    .pill.draft{background:#ffedd5;color:#9a3412}
+    .pill.batal{background:#fee2e2;color:#991b1b}
+    .grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    @media(max-width:900px){.grid4{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(max-width:520px){.grid4{grid-template-columns:1fr;}}
+    .kpi{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+    .kpi .label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .kpi .val{font-size:22px;font-weight:900;margin-top:6px}
+    .kpi .sub{font-size:12px;color:var(--muted);margin-top:4px}
+    .hr{height:1px;background:var(--line);margin:12px 0}
+    .waranHead{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+    .waranTitle{font-weight:900;font-size:16px}
+    .mini{display:flex;gap:10px;flex-wrap:wrap}
+    .miniBox{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fafafa;min-width:160px}
+    .miniBox .t{font-size:12px;color:var(--muted);font-weight:700}
+    .miniBox .n{font-size:16px;font-weight:900;margin-top:2px}
+    details{border:1px solid var(--line);border-radius:14px;background:#fff}
+    summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:900}
+    summary::-webkit-details-marker{display:none}
+    .content{padding:0 16px 16px 16px}
+    .right{text-align:right}
+    .small{font-size:12px;color:var(--muted)}
+  </style>
 </head>
 
 <body>
+<div class="wrap">
 
-<div class="card">
-<h2>Lejar Akreditasi</h2>
-<div id="loginSection">
-<div id="gbtn"></div>
-</div>
+  <div class="card">
+    <div class="row">
+      <div>
+        <h1>Lejar Akreditasi</h1>
+        <div class="muted">Track penerimaan waran & perbelanjaan ikut kod waran (committed ikut status).</div>
+      </div>
+      <div class="spacer"></div>
+      <div id="loginSection">
+        <div id="gbtn"></div>
+      </div>
+      <div id="userInfo" style="display:none;gap:10px;align-items:center" class="row">
+        <span id="userEmail" class="muted"></span>
+        <span id="userRole" class="badge"></span>
+        <button id="btnLogout">Logout</button>
+      </div>
+    </div>
+  </div>
 
-<div id="userInfo" class="hidden">
-<span id="userEmail"></span>
-<span id="userRole" class="badge"></span>
-<button id="btnLogout">Logout</button>
-</div>
-</div>
+  <div id="mainSection" style="display:none">
 
-<div id="mainSection" class="hidden">
+    <!-- SUMMARY -->
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0">Ringkasan</h2>
+        <div class="spacer"></div>
+        <span class="muted" id="lastSync"></span>
+        <button id="btnRefresh">Refresh</button>
+      </div>
+      <div class="hr"></div>
+      <div class="grid4">
+        <div class="kpi">
+          <div class="label">Total Penerimaan</div>
+          <div class="val" id="kpiTotalWaran">RM 0</div>
+          <div class="sub">Jumlah semua waran (ACTIVE)</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Total Committed</div>
+          <div class="val" id="kpiCommitted">RM 0</div>
+          <div class="sub">HANTAR PERMOHONAN + SELESAI</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Total Draft</div>
+          <div class="val" id="kpiDraft">RM 0</div>
+          <div class="sub">KERTAS KERJA</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Total Available</div>
+          <div class="val" id="kpiAvailable">RM 0</div>
+          <div class="sub">TotalWaran - Committed</div>
+        </div>
+      </div>
+    </div>
 
-<div class="card">
-<h3>Senarai Waran</h3>
-<div id="adminWaranForm" class="hidden">
-<input id="wNo" placeholder="No Waran"/>
-<input id="wPerihal" placeholder="Perihal"/>
-<input id="wJumlah" type="number" placeholder="Jumlah"/>
-<button class="primary" id="btnAddWaran">Tambah Waran</button>
-</div>
-<br/>
-<table>
-<thead>
-<tr>
-<th>WaranID</th>
-<th>NoWaran</th>
-<th>Perihal</th>
-<th>Jumlah</th>
-</tr>
-</thead>
-<tbody id="waranTable"></tbody>
-</table>
-</div>
+    <!-- ADD WARAN (ADMIN) -->
+    <div class="card" id="adminAddWaran" style="display:none">
+      <h2>Tambah Waran</h2>
+      <div class="muted">Waran baru akan muncul sebagai card. Belanja akan direkod di dalam card waran tu.</div>
+      <div class="hr"></div>
+      <div class="row">
+        <input id="wNo" placeholder="No Waran (contoh: A1234)" />
+        <input id="wTarikh" type="date" />
+        <input id="wPerihal" placeholder="Perihal" style="min-width:260px" />
+        <input id="wJumlah" type="number" placeholder="Jumlah (RM)" />
+        <select id="wStatus">
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+        <button class="primary" id="btnAddWaran">Tambah Waran</button>
+        <span class="small" id="wMsg"></span>
+      </div>
+    </div>
 
-<div class="card">
-<h3>Belanja (ikut Waran)</h3>
-<div id="adminBelanjaForm" class="hidden">
-<input id="bPerihal" placeholder="Perihal"/>
-<input id="bAmaun" type="number" placeholder="Amaun"/>
-<select id="bStatus">
-<option>KERTAS KERJA</option>
-<option>HANTAR PERMOHONAN</option>
-<option>SELESAI</option>
-<option>BATAL</option>
-</select>
-<button class="primary" id="btnAddBelanja">Tambah Belanja</button>
-</div>
-<br/>
-<table>
-<thead>
-<tr>
-<th>BelanjaID</th>
-<th>Perihal</th>
-<th>Amaun</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody id="belanjaTable"></tbody>
-</table>
-</div>
+    <!-- WARAN CARDS -->
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0">Waran</h2>
+        <div class="spacer"></div>
+        <input id="searchBox" placeholder="Cari NoWaran / Perihal..." style="min-width:260px" />
+      </div>
+      <div class="hr"></div>
+      <div id="waranCards"></div>
+      <div id="emptyState" class="muted" style="display:none">Tiada waran dipaparkan.</div>
+    </div>
 
+  </div>
 </div>
 
 <script>
+  // ================== CONFIG ==================
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec";
+  const GOOGLE_CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+  // ============================================
 
-// ================== CONFIG ==================
-const BASE_URL = "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec";
+  let sessionToken = localStorage.getItem("LA_TOKEN") || "";
+  let currentUser = null;
+  let snapshot = null; // store waran+summary from backend
 
-const GOOGLE_CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+  const fmtRM = (n)=> {
+    const x = Number(n||0);
+    return "RM " + x.toLocaleString("en-MY", {minimumFractionDigits:0, maximumFractionDigits:0});
+  };
 
-// ============================================
+  const fmtDate = (d)=>{
+    if(!d) return "";
+    // backend may send as yyyy-mm-dd
+    return d;
+  };
 
-let sessionToken = localStorage.getItem("LA_TOKEN") || "";
-let currentWaranId = null;
-let currentNoWaran = null;
-let currentRole = null;
+  async function apiGet(action, params={}){
+    const url = new URL(BASE_URL);
+    url.searchParams.set("action", action);
+    url.searchParams.set("token", sessionToken);
+    Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
+    const res = await fetch(url.toString());
+    return res.json();
+  }
 
-// ================= API =================
-async function apiGet(action, params={}){
-const url = new URL(BASE_URL);
-url.searchParams.set("action",action);
-url.searchParams.set("token",sessionToken);
-Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
-const res = await fetch(url.toString());
-return res.json();
-}
+  async function apiPost(action, body={}){
+    const url = new URL(BASE_URL);
+    url.searchParams.set("action", action);
+    url.searchParams.set("token", sessionToken);
+    const res = await fetch(url.toString(), {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(body)
+    });
+    return res.json();
+  }
 
-async function apiPost(action, body={}){
-const url = new URL(BASE_URL);
-url.searchParams.set("action",action);
-url.searchParams.set("token",sessionToken);
-const res = await fetch(url.toString(),{
-method:"POST",
-headers:{"Content-Type":"text/plain;charset=utf-8"},
-body:JSON.stringify(body)
-});
-return res.json();
-}
+  // -------- Google Login ----------
+  function onGoogleCredential(response){
+    apiPost("googleLogin", {idToken: response.credential})
+      .then(out=>{
+        if(!out.ok){ alert(out.error || "Login gagal"); return; }
+        sessionToken = out.token;
+        localStorage.setItem("LA_TOKEN", sessionToken);
+        initAfterLogin(out.user);
+      })
+      .catch(err=> alert(String(err)));
+  }
 
-// ============= GOOGLE LOGIN =============
-function onGoogleCredential(response){
-apiPost("googleLogin",{idToken:response.credential})
-.then(out=>{
-if(!out.ok){alert(out.error);return;}
-sessionToken = out.token;
-localStorage.setItem("LA_TOKEN",sessionToken);
-showUser(out.user);
-loadWaran();
-})
-.catch(err=>alert(err));
-}
+  window.onload = ()=>{
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onGoogleCredential });
+    google.accounts.id.renderButton(document.getElementById("gbtn"), {theme:"outline", size:"large"});
 
-window.onload = ()=>{
-google.accounts.id.initialize({
-client_id:GOOGLE_CLIENT_ID,
-callback:onGoogleCredential
-});
-google.accounts.id.renderButton(
-document.getElementById("gbtn"),
-{theme:"outline",size:"large"}
-);
+    if(sessionToken){
+      apiGet("me").then(res=>{
+        if(res.ok) initAfterLogin(res.user);
+        else localStorage.removeItem("LA_TOKEN");
+      });
+    }
 
-if(sessionToken){
-apiGet("me").then(res=>{
-if(res.ok){
-showUser(res.user);
-loadWaran();
-}else{
-localStorage.removeItem("LA_TOKEN");
-}
-});
-}
-};
+    document.getElementById("btnLogout").onclick = ()=>{
+      localStorage.removeItem("LA_TOKEN");
+      location.reload();
+    };
 
-function showUser(user){
-currentRole = user.role;
-document.getElementById("loginSection").classList.add("hidden");
-document.getElementById("mainSection").classList.remove("hidden");
-document.getElementById("userInfo").classList.remove("hidden");
-document.getElementById("userEmail").textContent = user.email;
-document.getElementById("userRole").textContent = user.role;
-document.getElementById("userRole").classList.add(user.role);
+    document.getElementById("btnRefresh").onclick = ()=> loadAll();
 
-if(user.role==="ADMIN"){
-document.getElementById("adminWaranForm").classList.remove("hidden");
-document.getElementById("adminBelanjaForm").classList.remove("hidden");
-}
-}
+    document.getElementById("searchBox").addEventListener("input", ()=>{
+      renderWaranCards();
+    });
 
-document.getElementById("btnLogout").onclick = ()=>{
-localStorage.removeItem("LA_TOKEN");
-location.reload();
-};
+    document.getElementById("btnAddWaran").onclick = addWaran;
+  };
 
-// ============= WARAN =============
-async function loadWaran(){
-const res = await apiGet("listWaran");
-if(!res.ok){alert(res.error);return;}
+  function initAfterLogin(user){
+    currentUser = user;
 
-const tbody = document.getElementById("waranTable");
-tbody.innerHTML="";
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("mainSection").style.display = "block";
+    document.getElementById("userInfo").style.display = "flex";
+    document.getElementById("userEmail").textContent = user.email;
 
-res.data.forEach(w=>{
-const tr=document.createElement("tr");
-tr.innerHTML=`
-<td>${w.WaranID}</td>
-<td>${w.NoWaran}</td>
-<td>${w.Perihal}</td>
-<td>${w.JumlahWaran}</td>
-`;
-tr.onclick=()=>{
-currentWaranId=w.WaranID;
-currentNoWaran=w.NoWaran;
-loadBelanja(w.WaranID);
-};
-tbody.appendChild(tr);
-});
-}
+    const roleEl = document.getElementById("userRole");
+    roleEl.textContent = user.role;
+    roleEl.classList.add(user.role);
 
-document.getElementById("btnAddWaran").onclick=async()=>{
-const body={
-NoWaran:document.getElementById("wNo").value,
-Perihal:document.getElementById("wPerihal").value,
-JumlahWaran:document.getElementById("wJumlah").value
-};
-const res=await apiPost("createWaran",body);
-if(res.ok) loadWaran();
-else alert(res.error);
-};
+    if(user.role === "ADMIN"){
+      document.getElementById("adminAddWaran").style.display = "block";
+    }
 
-// ============= BELANJA =============
-async function loadBelanja(waranId){
-const res=await apiGet("listBelanja",{waranId});
-if(!res.ok){alert(res.error);return;}
+    loadAll();
+  }
 
-const tbody=document.getElementById("belanjaTable");
-tbody.innerHTML="";
+  async function loadAll(){
+    const res = await apiGet("listWaranWithSummary");
+    if(!res.ok){ alert(res.error || "Gagal load data"); return; }
+    snapshot = res;
 
-res.data.forEach(b=>{
-const tr=document.createElement("tr");
-tr.innerHTML=`
-<td>${b.BelanjaID}</td>
-<td>${b.Perihal}</td>
-<td>${b.Amaun}</td>
-<td>${b.StatusBelanja}</td>
-`;
-tbody.appendChild(tr);
-});
-}
+    // KPI
+    document.getElementById("kpiTotalWaran").textContent = fmtRM(res.totals.totalWaran);
+    document.getElementById("kpiCommitted").textContent = fmtRM(res.totals.totalCommitted);
+    document.getElementById("kpiDraft").textContent = fmtRM(res.totals.totalDraft);
+    document.getElementById("kpiAvailable").textContent = fmtRM(res.totals.totalAvailable);
 
-document.getElementById("btnAddBelanja").onclick=async()=>{
-if(!currentNoWaran){alert("Pilih waran dahulu.");return;}
+    document.getElementById("lastSync").textContent = "Last sync: " + (res.serverTime || "");
 
-const body={
-NoWaran:currentNoWaran,
-Perihal:document.getElementById("bPerihal").value,
-Amaun:document.getElementById("bAmaun").value,
-StatusBelanja:document.getElementById("bStatus").value
-};
-const res=await apiPost("createBelanja",body);
-if(res.ok) loadBelanja(currentWaranId);
-else alert(res.error);
-};
+    renderWaranCards();
+  }
 
+  function renderWaranCards(){
+    const box = document.getElementById("waranCards");
+    box.innerHTML = "";
+
+    const q = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+
+    let list = (snapshot?.waran || []).slice();
+
+    // search filter
+    if(q){
+      list = list.filter(w=>{
+        return String(w.NoWaran||"").toLowerCase().includes(q) ||
+               String(w.Perihal||"").toLowerCase().includes(q) ||
+               String(w.WaranID||"").toLowerCase().includes(q);
+      });
+    }
+
+    if(list.length === 0){
+      document.getElementById("emptyState").style.display = "block";
+      return;
+    }else{
+      document.getElementById("emptyState").style.display = "none";
+    }
+
+    list.forEach(w=>{
+      const det = document.createElement("details");
+      det.style.marginBottom = "12px";
+
+      const sum = document.createElement("summary");
+      const status = (w.StatusWaran || "ACTIVE").toUpperCase();
+      const statusPill = status === "ACTIVE" ? `<span class="pill ok">ACTIVE</span>` :
+                         `<span class="pill batal">CLOSED</span>`;
+
+      sum.innerHTML = `
+        <div class="waranHead">
+          <div style="min-width:260px">
+            <div class="waranTitle">${w.NoWaran} <span class="muted">(${w.WaranID})</span></div>
+            <div class="muted">${fmtDate(w.TarikhTerima)} • ${w.Perihal || ""}</div>
+          </div>
+          <div class="mini">
+            <div class="miniBox">
+              <div class="t">Jumlah Waran</div>
+              <div class="n">${fmtRM(w.JumlahWaran)}</div>
+            </div>
+            <div class="miniBox">
+              <div class="t">Committed</div>
+              <div class="n">${fmtRM(w.summary.committed)}</div>
+            </div>
+            <div class="miniBox">
+              <div class="t">Draft</div>
+              <div class="n">${fmtRM(w.summary.draft)}</div>
+            </div>
+            <div class="miniBox">
+              <div class="t">Available</div>
+              <div class="n">${fmtRM(w.summary.available)}</div>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          ${statusPill}
+        </div>
+      `;
+      det.appendChild(sum);
+
+      const content = document.createElement("div");
+      content.className = "content";
+
+      // Belanja table
+      const rows = (w.belanja || []).map(b=>{
+        const st = (b.StatusBelanja||"").toUpperCase();
+        const stPill = st === "HANTAR PERMOHONAN" || st === "SELESAI" ? `<span class="pill ok">${st}</span>` :
+                       st === "KERTAS KERJA" ? `<span class="pill draft">${st}</span>` :
+                       `<span class="pill batal">${st}</span>`;
+        return `
+          <tr>
+            <td>${b.BelanjaID || ""}<div class="small">${fmtDate(b.Tarikh || "")}</div></td>
+            <td>${b.Perihal || ""}<div class="small">${b.Catatan || ""}</div></td>
+            <td class="right">${fmtRM(b.Amaun)}</td>
+            <td>${stPill}</td>
+            <td>${b.NoDokumen || ""}</td>
+            <td>${b.Payee || ""}</td>
+          </tr>
+        `;
+      }).join("");
+
+      content.innerHTML = `
+        <div class="row">
+          <h3 style="margin:0">Belanja</h3>
+          <div class="spacer"></div>
+          <span class="muted">Committed ikut status: HANTAR PERMOHONAN / SELESAI</span>
+        </div>
+        <div class="hr"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>BelanjaID / Tarikh</th>
+              <th>Perihal / Catatan</th>
+              <th class="right">Amaun</th>
+              <th>Status</th>
+              <th>No Dokumen</th>
+              <th>Payee</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="6" class="muted">Belum ada belanja untuk waran ini.</td></tr>`}
+          </tbody>
+        </table>
+
+        ${currentUser?.role === "ADMIN" ? `
+          <div class="hr"></div>
+          <h3>Tambah Belanja (Waran: ${w.NoWaran})</h3>
+          <div class="row" style="margin-top:10px">
+            <input type="date" data-w="${w.WaranID}" class="bTarikh" />
+            <input placeholder="Perihal" data-w="${w.WaranID}" class="bPerihal" style="min-width:240px" />
+            <input type="number" placeholder="Amaun (RM)" data-w="${w.WaranID}" class="bAmaun" />
+            <select data-w="${w.WaranID}" class="bStatus">
+              <option>KERTAS KERJA</option>
+              <option>HANTAR PERMOHONAN</option>
+              <option>SELESAI</option>
+              <option>BATAL</option>
+            </select>
+            <input placeholder="No Dokumen" data-w="${w.WaranID}" class="bNoDoc" />
+            <input placeholder="Payee" data-w="${w.WaranID}" class="bPayee" />
+            <input placeholder="Catatan" data-w="${w.WaranID}" class="bCatatan" style="min-width:220px" />
+            <button class="primary btnAddBelanja" data-w="${w.WaranID}" data-now="${w.NoWaran}">Tambah</button>
+            <span class="small bMsg" data-w="${w.WaranID}"></span>
+          </div>
+        ` : ``}
+      `;
+
+      det.appendChild(content);
+      box.appendChild(det);
+
+      // attach events for add belanja buttons inside this card
+      if(currentUser?.role === "ADMIN"){
+        const btn = content.querySelector(".btnAddBelanja");
+        btn.addEventListener("click", ()=> addBelanjaForWaran(w.WaranID, w.NoWaran, content));
+      }
+    });
+  }
+
+  async function addWaran(){
+    const msg = document.getElementById("wMsg");
+    msg.textContent = "";
+
+    const NoWaran = document.getElementById("wNo").value.trim();
+    const TarikhTerima = document.getElementById("wTarikh").value;
+    const Perihal = document.getElementById("wPerihal").value.trim();
+    const JumlahWaran = document.getElementById("wJumlah").value;
+    const StatusWaran = document.getElementById("wStatus").value;
+
+    if(!NoWaran || !TarikhTerima || !Perihal || !JumlahWaran){
+      msg.textContent = "Lengkapkan NoWaran, Tarikh, Perihal, Jumlah.";
+      return;
+    }
+
+    const res = await apiPost("createWaran", {NoWaran, TarikhTerima, Perihal, JumlahWaran, StatusWaran});
+    if(!res.ok){ msg.textContent = res.error || "Gagal tambah waran"; return; }
+
+    document.getElementById("wNo").value = "";
+    document.getElementById("wTarikh").value = "";
+    document.getElementById("wPerihal").value = "";
+    document.getElementById("wJumlah").value = "";
+
+    msg.textContent = "Waran ditambah ✅";
+    await loadAll();
+  }
+
+  async function addBelanjaForWaran(waranId, noWaran, content){
+    const get = (sel)=> content.querySelector(sel);
+
+    const tarikh = get(".bTarikh").value;
+    const perihal = get(".bPerihal").value.trim();
+    const amaun = get(".bAmaun").value;
+    const status = get(".bStatus").value;
+    const noDoc = get(".bNoDoc").value.trim();
+    const payee = get(".bPayee").value.trim();
+    const catatan = get(".bCatatan").value.trim();
+    const msg = get(".bMsg");
+
+    msg.textContent = "";
+
+    if(!tarikh || !perihal || !amaun){
+      msg.textContent = "Isi Tarikh + Perihal + Amaun.";
+      return;
+    }
+
+    const res = await apiPost("createBelanja", {
+      WaranID: waranId,
+      NoWaran: noWaran,
+      Tarikh: tarikh,
+      Perihal: perihal,
+      Amaun: amaun,
+      StatusBelanja: status,
+      NoDokumen: noDoc,
+      Payee: payee,
+      Catatan: catatan
+    });
+
+    if(!res.ok){ msg.textContent = res.error || "Gagal tambah belanja"; return; }
+
+    // reset some fields
+    get(".bPerihal").value = "";
+    get(".bAmaun").value = "";
+    get(".bNoDoc").value = "";
+    get(".bPayee").value = "";
+    get(".bCatatan").value = "";
+    msg.textContent = "Belanja ditambah ✅";
+
+    await loadAll();
+  }
 </script>
-
 </body>
 </html>
