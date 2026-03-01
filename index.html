@@ -1,655 +1,594 @@
 <!doctype html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Lejar Akreditasi</title>
-
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
   <style>
-    html, body { background: #f6f8fb; }
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow: 0 2px 10px rgba(15, 23, 42, .04); }
-    .muted { color:#64748b; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #e5e7eb; }
-    .badge-green { background:#eafff3; border-color:#bbf7d0; color:#166534; }
-    .badge-red { background:#fff1f2; border-color:#fecdd3; color:#9f1239; }
-    .badge-amber { background:#fffbeb; border-color:#fde68a; color:#92400e; }
-    .badge-slate { background:#f1f5f9; border-color:#e2e8f0; color:#0f172a; }
-    .btn { border-radius:12px; padding:10px 14px; font-weight:600; }
-    .btn-primary { background:#2563eb; color:#fff; }
-    .btn-primary:hover { background:#1d4ed8; }
-    .btn-ghost { background:#fff; border:1px solid #e5e7eb; }
-    .btn-ghost:hover { background:#f8fafc; }
-    .inp { border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; outline:none; width:100%; }
-    .inp:focus { border-color:#93c5fd; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
-    .table th { text-align:left; font-size:12px; color:#64748b; font-weight:700; padding:10px 10px; border-bottom:1px solid #e5e7eb; }
-    .table td { padding:10px 10px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
-    .row { display:grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
-    .col-12 { grid-column: span 12; }
-    .col-6 { grid-column: span 6; }
-    .col-4 { grid-column: span 4; }
-    .col-3 { grid-column: span 3; }
-    .col-2 { grid-column: span 2; }
-    @media (max-width: 900px){
-      .col-6, .col-4, .col-3, .col-2 { grid-column: span 12; }
-    }
+    :root{--bg1:#f3f6ff;--bg2:#f7fbff;}
+    body{background:radial-gradient(1000px 600px at 20% 0%, var(--bg1), transparent),
+         radial-gradient(900px 600px at 80% 10%, var(--bg2), transparent),
+         #f5f7fb;}
+    .card{background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(15,23,42,.08);border:1px solid rgba(148,163,184,.25)}
+    .inp{border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:.55rem .75rem;outline:none}
+    .inp:focus{border-color:rgba(59,130,246,.65);box-shadow:0 0 0 4px rgba(59,130,246,.12)}
+    .btn{border-radius:12px;padding:.55rem .9rem;font-weight:700}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .muted{color:#64748b}
   </style>
 </head>
-
 <body class="min-h-screen">
-  <div class="max-w-6xl mx-auto px-4 py-8 space-y-6">
-
-    <!-- Header -->
-    <div class="card p-6 flex flex-col gap-3">
-      <div class="flex items-start justify-between gap-4">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="card p-6 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
-          <p class="muted mt-1">Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status).</p>
+          <div class="text-slate-600 mt-1">
+            Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status).
+          </div>
         </div>
-
         <div class="flex items-center gap-3">
-          <div id="userPill" class="hidden items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50">
-            <span class="text-sm text-slate-700" id="userEmail"></span>
-            <span class="badge badge-green" id="userRole">ADMIN</span>
-          </div>
-          <button id="btnLogout" class="btn btn-ghost hidden">Logout</button>
-        </div>
-      </div>
-
-      <!-- Login Area -->
-      <div id="loginCard" class="mt-2 card p-5 bg-slate-50 border-slate-200">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div class="font-bold text-slate-900">Sila login guna Google (whitelist sahaja boleh masuk).</div>
-            <div class="text-sm muted mt-1">
-              Kalau keluar “Failed to fetch”, itu biasanya CORS (preflight). Code ini memang elak preflight.
-            </div>
-            <div id="loginError" class="text-sm text-red-600 mt-2 hidden"></div>
-          </div>
-          <div id="gsiBtn"></div>
+          <div id="userBox" class="text-sm text-slate-600 hidden"></div>
+          <button id="logoutBtn" class="btn border bg-white hidden">Logout</button>
         </div>
       </div>
     </div>
 
-    <!-- Content -->
-    <div id="app" class="hidden space-y-6">
+    <!-- LOGIN -->
+    <div id="loginCard" class="card p-6">
+      <div class="text-lg font-bold text-slate-900 mb-1">Sila login</div>
+      <div class="text-slate-600 text-sm mb-4">Whitelist sahaja boleh masuk. (JSONP – confirm tak kena CORS)</div>
 
-      <!-- Ringkasan -->
-      <div class="card p-6">
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="text-2xl font-extrabold text-slate-900">Ringkasan</h2>
-          <div class="flex items-center gap-3">
-            <div class="text-sm muted">Last sync: <span class="mono" id="lastSync">-</span></div>
-            <button id="btnRefresh" class="btn btn-ghost">Refresh</button>
-          </div>
+      <div class="grid md:grid-cols-[1fr_auto] gap-3 items-end">
+        <div>
+          <label class="text-sm font-semibold text-slate-700">Email</label>
+          <input id="emailInp" class="inp w-full mt-1" placeholder="contoh: faizan@pms.edu.my">
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
-          <div class="card p-4">
-            <div class="text-xs font-bold text-slate-500">TOTAL PENERIMAAN</div>
-            <div class="text-2xl font-extrabold mt-1" id="sumTotalWaran">RM 0</div>
-            <div class="text-sm muted mt-1" id="sumNoteWaran">Jumlah semua waran (bukan CLOSED)</div>
-          </div>
-          <div class="card p-4">
-            <div class="text-xs font-bold text-slate-500">TOTAL COMMITTED</div>
-            <div class="text-2xl font-extrabold mt-1" id="sumCommitted">RM 0</div>
-            <div class="text-sm muted mt-1">HANTAR PERMOHONAN + SELESAI</div>
-          </div>
-          <div class="card p-4">
-            <div class="text-xs font-bold text-slate-500">TOTAL DRAFT</div>
-            <div class="text-2xl font-extrabold mt-1" id="sumDraft">RM 0</div>
-            <div class="text-sm muted mt-1">KERTAS KERJA + BATAL</div>
-          </div>
-          <div class="card p-4">
-            <div class="text-xs font-bold text-slate-500">TOTAL AVAILABLE</div>
-            <div class="text-2xl font-extrabold mt-1" id="sumAvail">RM 0</div>
-            <div class="text-sm muted mt-1">TotalWaran - Committed</div>
-          </div>
-        </div>
+        <button id="loginBtn" class="btn bg-blue-600 text-white">Login</button>
       </div>
 
-      <!-- Tambah Waran -->
-      <div class="card p-6" id="waranFormCard">
+      <div id="loginMsg" class="mt-3 text-sm"></div>
+    </div>
+
+    <!-- APP -->
+    <div id="app" class="hidden">
+      <!-- Ringkasan -->
+      <div class="card p-6 mt-6">
         <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-2xl font-extrabold text-slate-900">Tambah Waran</h2>
-            <p class="text-sm muted mt-1">Waran baru akan muncul sebagai card. Belanja direkod dalam card waran tu.</p>
+          <div class="text-2xl font-extrabold text-slate-900">Ringkasan</div>
+          <div class="flex items-center gap-3">
+            <div id="lastSync" class="text-xs muted"></div>
+            <button id="refreshBtn" class="btn border bg-white">Refresh</button>
           </div>
-          <span class="badge badge-green" id="adminMode">ADMIN MODE</span>
         </div>
 
-        <div class="row mt-5">
-          <div class="col-3">
-            <input id="inNoWaran" class="inp" placeholder="No Waran (contoh: A1234)" />
-          </div>
-          <div class="col-2">
-            <input id="inTarikhTerima" class="inp" type="date" />
-          </div>
-          <div class="col-4">
-            <input id="inPerihalWaran" class="inp" placeholder="Perihal" />
-          </div>
-          <div class="col-2">
-            <input id="inJumlahWaran" class="inp" placeholder="Jumlah (RM)" inputmode="decimal" />
-          </div>
-          <div class="col-1">
-            <select id="inStatusWaran" class="inp">
+        <div class="grid md:grid-cols-4 gap-4 mt-4" id="summaryGrid"></div>
+      </div>
+
+      <!-- Tambah Waran (Admin) -->
+      <div id="addWaranCard" class="card p-6 mt-6 hidden">
+        <div class="text-2xl font-extrabold text-slate-900">Tambah Waran</div>
+        <div class="text-slate-600 text-sm mb-4">Waran baru akan muncul sebagai card. Belanja direkod di dalam card waran tu.</div>
+
+        <div class="grid md:grid-cols-5 gap-3">
+          <input id="wNo" class="inp" placeholder="No Waran (contoh: A1234)">
+          <input id="wTarikh" class="inp" type="date">
+          <input id="wPerihal" class="inp md:col-span-2" placeholder="Perihal">
+          <div class="grid grid-cols-2 gap-3">
+            <input id="wJumlah" class="inp" placeholder="Jumlah (RM)" inputmode="decimal">
+            <select id="wStatus" class="inp">
               <option value="ACTIVE">ACTIVE</option>
               <option value="CLOSED">CLOSED</option>
             </select>
           </div>
-          <div class="col-12 flex justify-end">
-            <button id="btnAddWaran" class="btn btn-primary">Tambah Waran</button>
-          </div>
         </div>
 
-        <div id="waranMsg" class="text-sm mt-3 hidden"></div>
+        <div class="mt-4 flex items-center gap-3">
+          <button id="addWaranBtn" class="btn bg-blue-600 text-white">Tambah Waran</button>
+          <div id="addWaranMsg" class="text-sm muted"></div>
+        </div>
       </div>
 
-      <!-- List Waran -->
-      <div class="card p-6">
+      <!-- Waran List -->
+      <div class="card p-6 mt-6">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-2xl font-extrabold text-slate-900">Waran</h2>
-          <input id="searchWaran" class="inp max-w-sm" placeholder="Cari NoWaran / Perihal..." />
+          <div class="text-2xl font-extrabold text-slate-900">Waran</div>
+          <input id="searchInp" class="inp w-full md:w-80" placeholder="Cari NoWaran / Perihal...">
         </div>
-
-        <div id="waranList" class="mt-5 space-y-5"></div>
+        <div id="waranList" class="mt-4 space-y-6"></div>
       </div>
-
     </div>
   </div>
 
 <script>
-/** =========================
- * CONFIG
- * ========================= */
-const CONFIG = {
-  // Apps Script Web App URL (exec)
-  API_URL: "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec",
-  // Google OAuth Client ID (yang kau bagi)
-  GOOGLE_CLIENT_ID: "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com",
-};
+  // ====== CONFIG ======
+  const GAS_URL = "PASTE_URL_EXEC_KAU"; // <--- paste URL /exec kau kat sini
 
-const STATUS_BELANJA = [
-  "KERTAS KERJA",
-  "BATAL",
-  "HANTAR PERMOHONAN",
-  "SELESAI"
-];
+  // ====== STATE ======
+  const STATUS_BELANJA = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
+  let session = null;
+  let token = localStorage.getItem("LA_TOKEN") || "";
+  let cache = null;
 
-let session = {
-  token: localStorage.getItem("LA_TOKEN") || "",
-  email: localStorage.getItem("LA_EMAIL") || "",
-  role: localStorage.getItem("LA_ROLE") || "",
-};
-
-let state = {
-  waran: [],
-  belanja: [],
-};
-
-/** =========================
- * HELPERS
- * ========================= */
-const el = (id) => document.getElementById(id);
-const fmtRM = (n) => {
-  const x = Number(n || 0);
-  return "RM " + x.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-};
-const nowStamp = () => {
-  const d = new Date();
-  const pad = (v) => String(v).padStart(2,"0");
-  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}, ${d.toLocaleTimeString("en-MY")}`;
-};
-
-function showMsg(nodeId, msg, ok=true){
-  const n = el(nodeId);
-  n.classList.remove("hidden");
-  n.className = `text-sm mt-3 ${ok ? "text-emerald-700" : "text-red-600"}`;
-  n.textContent = msg;
-  setTimeout(()=>{ n.classList.add("hidden"); }, 3500);
-}
-
-function setLoginError(msg){
-  const n = el("loginError");
-  if(!msg){ n.classList.add("hidden"); n.textContent=""; return; }
-  n.classList.remove("hidden");
-  n.textContent = msg;
-}
-
-/** =========================
- * API (NO PREFLIGHT)
- * - use text/plain body
- * ========================= */
-async function apiPost(action, payload = {}) {
-  const bodyObj = {
-    action,
-    token: session.token || "",
-    payload
-  };
-
-  const res = await fetch(CONFIG.API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" }, // IMPORTANT: avoid preflight
-    body: JSON.stringify(bodyObj),
-  });
-
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); }
-  catch(e){ throw new Error("Response bukan JSON: " + text.slice(0,200)); }
-
-  if(!data.ok){
-    const err = data.error || "Unknown error";
-    throw new Error(err);
+  // ====== JSONP API ======
+  function b64(obj){
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj||{}))));
   }
-  return data;
-}
 
-/** =========================
- * AUTH
- * ========================= */
-function setSession(s){
-  session.token = s.token || "";
-  session.email = s.email || "";
-  session.role = s.role || "";
+  function jsonp(action, params = {}){
+    return new Promise((resolve, reject) => {
+      const cb = "cb_" + Math.random().toString(16).slice(2);
+      const qs = new URLSearchParams({
+        action,
+        callback: cb,
+        ...params
+      });
 
-  localStorage.setItem("LA_TOKEN", session.token);
-  localStorage.setItem("LA_EMAIL", session.email);
-  localStorage.setItem("LA_ROLE", session.role);
-}
+      const url = GAS_URL + (GAS_URL.includes("?") ? "&" : "?") + qs.toString();
+      const s = document.createElement("script");
+      let done = false;
 
-function clearSession(){
-  session = { token:"", email:"", role:"" };
-  localStorage.removeItem("LA_TOKEN");
-  localStorage.removeItem("LA_EMAIL");
-  localStorage.removeItem("LA_ROLE");
-}
+      window[cb] = (data) => {
+        done = true;
+        cleanup();
+        resolve(data);
+      };
 
-function renderAuthUI(isLoggedIn){
-  el("app").classList.toggle("hidden", !isLoggedIn);
-  el("btnLogout").classList.toggle("hidden", !isLoggedIn);
-  el("userPill").classList.toggle("hidden", !isLoggedIn);
-  el("loginCard").classList.toggle("hidden", isLoggedIn);
+      function cleanup(){
+        try{ delete window[cb]; }catch(e){ window[cb]=undefined; }
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      }
 
-  if(isLoggedIn){
-    el("userEmail").textContent = session.email;
-    el("userRole").textContent = session.role || "USER";
-    el("userRole").className = `badge ${session.role === "ADMIN" ? "badge-green" : "badge-slate"}`;
-    // admin-only form
-    const isAdmin = (session.role === "ADMIN");
-    el("waranFormCard").style.display = isAdmin ? "" : "none";
-  }
-}
+      s.onerror = () => {
+        if (done) return;
+        cleanup();
+        reject(new Error("JSONP load failed"));
+      };
 
-async function loginWithGoogle(id_token){
-  setLoginError("");
-  try{
-    const out = await apiPost("loginGoogle", { id_token });
-    setSession(out.session);
-    renderAuthUI(true);
-    await loadAll();
-  }catch(err){
-    clearSession();
-    renderAuthUI(false);
-    setLoginError("Login gagal: " + err.message);
-  }
-}
-
-/** =========================
- * DATA LOAD + RENDER
- * ========================= */
-async function loadAll(){
-  const out = await apiPost("getAll", {});
-  state.waran = out.data.waran || [];
-  state.belanja = out.data.belanja || [];
-  el("lastSync").textContent = nowStamp();
-  renderSummary();
-  renderWaranList();
-}
-
-function computePerWaran(w){
-  const waranId = w.WaranID;
-  const items = state.belanja.filter(b => b.WaranID === waranId);
-
-  const committed = items
-    .filter(x => ["HANTAR PERMOHONAN","SELESAI"].includes(x.StatusBelanja))
-    .reduce((a,x)=>a+Number(x.Amaun||0),0);
-
-  const draft = items
-    .filter(x => ["KERTAS KERJA","BATAL"].includes(x.StatusBelanja))
-    .reduce((a,x)=>a+Number(x.Amaun||0),0);
-
-  const jumlah = Number(w.JumlahWaran || 0);
-  const available = jumlah - committed;
-
-  return { items, committed, draft, available, jumlah };
-}
-
-function renderSummary(){
-  const activeWaran = state.waran.filter(w => (w.StatusWaran || "").toUpperCase() !== "CLOSED");
-  const totalWaran = activeWaran.reduce((a,w)=>a+Number(w.JumlahWaran||0),0);
-
-  let totalCommitted = 0;
-  let totalDraft = 0;
-  activeWaran.forEach(w=>{
-    const s = computePerWaran(w);
-    totalCommitted += s.committed;
-    totalDraft += s.draft;
-  });
-  const totalAvail = totalWaran - totalCommitted;
-
-  el("sumTotalWaran").textContent = fmtRM(totalWaran);
-  el("sumCommitted").textContent = fmtRM(totalCommitted);
-  el("sumDraft").textContent = fmtRM(totalDraft);
-  el("sumAvail").textContent = fmtRM(totalAvail);
-}
-
-function statusBadgeWaran(status){
-  const s = (status||"").toUpperCase();
-  if(s === "CLOSED") return `<span class="badge badge-red">CLOSED</span>`;
-  return `<span class="badge badge-green">ACTIVE</span>`;
-}
-
-function statusBadgeBelanja(status){
-  const s = (status||"").toUpperCase();
-  if(s === "SELESAI") return `<span class="badge badge-green">SELESAI</span>`;
-  if(s === "HANTAR PERMOHONAN") return `<span class="badge badge-amber">HANTAR PERMOHONAN</span>`;
-  if(s === "BATAL") return `<span class="badge badge-red">BATAL</span>`;
-  return `<span class="badge badge-slate">KERTAS KERJA</span>`;
-}
-
-function renderWaranList(){
-  const q = (el("searchWaran").value || "").trim().toLowerCase();
-  const list = state.waran
-    .slice()
-    .sort((a,b)=> String(b.TarikhTerima||"").localeCompare(String(a.TarikhTerima||"")))
-    .filter(w=>{
-      if(!q) return true;
-      return (String(w.NoWaran||"").toLowerCase().includes(q) || String(w.Perihal||"").toLowerCase().includes(q));
+      document.body.appendChild(s);
+      s.src = url;
     });
-
-  const root = el("waranList");
-  root.innerHTML = "";
-
-  if(list.length === 0){
-    root.innerHTML = `<div class="text-sm muted">Tiada waran.</div>`;
-    return;
   }
 
-  for(const w of list){
-    const s = computePerWaran(w);
-    const util = (s.jumlah > 0) ? Math.max(0, Math.min(100, (s.committed/s.jumlah)*100)) : 0;
+  async function api(action, payload){
+    const params = {};
+    if (token) params.token = token;
+    if (payload) params.payload = b64(payload);
+    const res = await jsonp(action, params);
+    if (!res || !res.ok){
+      const msg = (res && res.error) ? res.error : "Request failed";
+      throw new Error(msg);
+    }
+    return res;
+  }
 
-    const card = document.createElement("div");
-    card.className = "card p-5 border-slate-200";
+  // ====== UI Helpers ======
+  const $ = (id)=>document.getElementById(id);
+  const fmtRM = (n)=> "RM " + (Number(n||0).toLocaleString("en-MY",{minimumFractionDigits:0, maximumFractionDigits:2}));
+  function badge(text, type="gray"){
+    const map = {
+      green:"bg-emerald-50 text-emerald-700 border-emerald-200",
+      blue:"bg-sky-50 text-sky-700 border-sky-200",
+      amber:"bg-amber-50 text-amber-700 border-amber-200",
+      red:"bg-rose-50 text-rose-700 border-rose-200",
+      gray:"bg-slate-50 text-slate-700 border-slate-200",
+    };
+    return `<span class="inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-bold ${map[type]||map.gray}">${text}</span>`;
+  }
 
-    const belanjaRows = (s.items.length === 0)
-      ? `<tr><td class="muted" colspan="7">Belum ada belanja untuk waran ni.</td></tr>`
-      : s.items
-          .slice()
-          .sort((a,b)=> String(b.Tarikh||"").localeCompare(String(a.Tarikh||"")))
-          .map(x=>`
-            <tr>
-              <td class="mono">${x.BelanjaID || "-"}</td>
-              <td class="mono">${x.Tarikh || "-"}</td>
-              <td>
-                <div class="font-bold text-slate-900">${x.Perihal || "-"}</div>
-                <div class="text-xs muted">${x.Catatan || ""}</div>
+  function statusBadgeBelanja(st){
+    st = String(st||"").toUpperCase();
+    if (st==="KERTAS KERJA") return badge("KERTAS KERJA","amber");
+    if (st==="HANTAR PERMOHONAN") return badge("HANTAR PERMOHONAN","blue");
+    if (st==="SELESAI") return badge("SELESAI","green");
+    if (st==="BATAL") return badge("BATAL","red");
+    return badge(st||"-","gray");
+  }
+
+  function statusBadgeWaran(st){
+    st = String(st||"").toUpperCase();
+    if (st==="ACTIVE") return badge("ACTIVE","green");
+    if (st==="CLOSED") return badge("CLOSED","red");
+    return badge(st||"-","gray");
+  }
+
+  // ====== Render ======
+  function renderSummary(r){
+    const grid = $("summaryGrid");
+    grid.innerHTML = `
+      <div class="card p-4">
+        <div class="text-xs font-bold text-slate-500">TOTAL PENERIMAAN</div>
+        <div class="text-2xl font-extrabold text-slate-900 mt-1">${fmtRM(r.totalPenerimaan)}</div>
+        <div class="text-xs muted mt-1">Jumlah semua waran (bukan CLOSED)</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-xs font-bold text-slate-500">TOTAL COMMITTED</div>
+        <div class="text-2xl font-extrabold text-slate-900 mt-1">${fmtRM(r.totalCommitted)}</div>
+        <div class="text-xs muted mt-1">HANTAR PERMOHONAN + SELESAI</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-xs font-bold text-slate-500">TOTAL DRAFT</div>
+        <div class="text-2xl font-extrabold text-slate-900 mt-1">${fmtRM(r.totalDraft)}</div>
+        <div class="text-xs muted mt-1">KERTAS KERJA + BATAL</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-xs font-bold text-slate-500">TOTAL AVAILABLE</div>
+        <div class="text-2xl font-extrabold text-slate-900 mt-1">${fmtRM(r.totalAvailable)}</div>
+        <div class="text-xs muted mt-1">TotalWaran - Committed</div>
+      </div>
+    `;
+  }
+
+  function groupBelanjaByWaranId(belanja){
+    const m = {};
+    for (const b of (belanja||[])){
+      const wid = String(b.WaranID||"").trim();
+      if (!wid) continue;
+      if (!m[wid]) m[wid] = [];
+      m[wid].push(b);
+    }
+    return m;
+  }
+
+  function renderWaranList(data){
+    const root = $("waranList");
+    const q = $("searchInp").value.trim().toLowerCase();
+    const belanjaMap = groupBelanjaByWaranId(data.belanja);
+
+    const list = (data.waran||[])
+      .filter(w=>{
+        if (!q) return true;
+        return String(w.NoWaran||"").toLowerCase().includes(q) || String(w.Perihal||"").toLowerCase().includes(q);
+      });
+
+    root.innerHTML = "";
+    if (!list.length){
+      root.innerHTML = `<div class="text-slate-600">Tak ada data waran.</div>`;
+      return;
+    }
+
+    for (const w of list){
+      const rows = (belanjaMap[w.WaranID] || []);
+      const belanjaRows = rows.length
+        ? rows.map(x=>`
+            <tr class="border-t">
+              <td class="py-2 pr-3 mono text-sm">${x.BelanjaID||"-"}</td>
+              <td class="py-2 pr-3 mono text-sm">${x.Tarikh||"-"}</td>
+              <td class="py-2 pr-3">
+                <div class="font-bold text-slate-900">${x.Perihal||"-"}</div>
+                <div class="text-xs muted">${x.Catatan||""}</div>
               </td>
-              <td class="font-bold">${fmtRM(x.Amaun||0)}</td>
-              <td>${statusBadgeBelanja(x.StatusBelanja)}</td>
-              <td class="mono">${x.NoDokumen || "-"}</td>
-              <td>${x.Payee || "-"}</td>
+              <td class="py-2 pr-3 font-bold">${fmtRM(x.Amaun||0)}</td>
+              <td class="py-2 pr-3">
+                ${session.role==="ADMIN" ? `
+                  <select class="inp text-sm" data-status-edit="${x.BelanjaID}">
+                    ${STATUS_BELANJA.map(s=>`
+                      <option value="${s}" ${String(x.StatusBelanja||"").toUpperCase()===s ? "selected":""}>${s}</option>
+                    `).join("")}
+                  </select>
+                ` : statusBadgeBelanja(x.StatusBelanja)}
+              </td>
+              <td class="py-2 pr-3 mono text-sm">${x.NoDokumen||"-"}</td>
+              <td class="py-2 pr-3 text-sm">${x.Payee||"-"}</td>
             </tr>
-          `).join("");
+          `).join("")
+        : `<tr class="border-t"><td class="py-3 text-slate-500" colspan="7">Belum ada belanja untuk waran ni.</td></tr>`;
 
-    const isAdmin = (session.role === "ADMIN");
+      const card = document.createElement("div");
+      card.className = "card p-5";
 
-    card.innerHTML = `
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <div class="text-lg font-extrabold text-slate-900">
-            ${w.NoWaran} <span class="text-sm muted">(${w.WaranID})</span>
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-lg font-extrabold text-slate-900">
+              ${w.NoWaran} <span class="text-slate-400 font-bold">(${w.WaranID})</span>
+            </div>
+            <div class="text-sm text-slate-600 mt-0.5">
+              <span class="mono">${w.TarikhTerima||"-"}</span>
+              <span class="mx-2">•</span>
+              <span class="font-bold">${w.Perihal||"-"}</span>
+            </div>
           </div>
-          <div class="text-sm muted mt-1">${w.TarikhTerima || "-"} &nbsp;•&nbsp; <span class="font-bold text-slate-700">${w.Perihal || "-"}</span></div>
+          <div class="flex flex-col items-end gap-2">
+            ${statusBadgeWaran(w.StatusWaran)}
+            ${session.role==="ADMIN" ? `
+              <select class="inp text-sm" data-waran-status="${w.WaranID}">
+                <option value="ACTIVE" ${String(w.StatusWaran).toUpperCase()==="ACTIVE"?"selected":""}>ACTIVE</option>
+                <option value="CLOSED" ${String(w.StatusWaran).toUpperCase()==="CLOSED"?"selected":""}>CLOSED</option>
+              </select>
+            `:``}
+          </div>
         </div>
-        <div>${statusBadgeWaran(w.StatusWaran)}</div>
-      </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
-        <div class="card p-3">
-          <div class="text-xs font-bold text-slate-500">Jumlah Waran</div>
-          <div class="text-xl font-extrabold mt-1">${fmtRM(s.jumlah)}</div>
+        <div class="grid md:grid-cols-4 gap-3 mt-4">
+          <div class="card p-3">
+            <div class="text-xs font-bold text-slate-500">Jumlah Waran</div>
+            <div class="text-xl font-extrabold">${fmtRM(w.JumlahWaran)}</div>
+          </div>
+          <div class="card p-3">
+            <div class="text-xs font-bold text-slate-500">Committed</div>
+            <div class="text-xl font-extrabold">${fmtRM(w.Committed)}</div>
+          </div>
+          <div class="card p-3">
+            <div class="text-xs font-bold text-slate-500">Draft</div>
+            <div class="text-xl font-extrabold">${fmtRM(w.Draft)}</div>
+          </div>
+          <div class="card p-3">
+            <div class="text-xs font-bold text-slate-500">Available</div>
+            <div class="text-xl font-extrabold">${fmtRM(w.Available)}</div>
+          </div>
         </div>
-        <div class="card p-3">
-          <div class="text-xs font-bold text-slate-500">Committed</div>
-          <div class="text-xl font-extrabold mt-1">${fmtRM(s.committed)}</div>
-        </div>
-        <div class="card p-3">
-          <div class="text-xs font-bold text-slate-500">Draft</div>
-          <div class="text-xl font-extrabold mt-1">${fmtRM(s.draft)}</div>
-        </div>
-        <div class="card p-3">
-          <div class="text-xs font-bold text-slate-500">Available</div>
-          <div class="text-xl font-extrabold mt-1">${fmtRM(s.available)}</div>
-        </div>
-      </div>
 
-      <div class="mt-3">
-        <div class="text-xs font-bold text-slate-500">Utilization (Committed / Jumlah)</div>
-        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-2">
-          <div class="h-2 bg-blue-500" style="width:${util.toFixed(0)}%"></div>
+        <div class="mt-3">
+          <div class="text-xs muted mb-1">Utilization (Committed / Jumlah)</div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-600" style="width:${Math.max(0,Math.min(100,w.UtilizationPct||0))}%"></div>
+          </div>
+          <div class="text-xs muted mt-1">${w.UtilizationPct||0}%</div>
         </div>
-        <div class="text-xs muted mt-1">${util.toFixed(0)}%</div>
-      </div>
 
-      <div class="mt-5">
-        <div class="flex items-center justify-between">
+        <div class="mt-5 flex items-center justify-between">
           <div class="text-lg font-extrabold text-slate-900">Belanja</div>
-          <div class="text-sm muted">Committed: HANTAR PERMOHONAN / SELESAI</div>
+          <div class="text-xs muted">Committed ikut status: HANTAR PERMOHONAN / SELESAI</div>
         </div>
 
-        <div class="overflow-x-auto mt-3">
-          <table class="table w-full">
+        <div class="mt-2 overflow-x-auto">
+          <table class="w-full text-left">
             <thead>
-              <tr>
-                <th>BelanjaID</th>
-                <th>Tarikh</th>
-                <th>Perihal / Catatan</th>
-                <th>Amaun</th>
-                <th>Status</th>
-                <th>No Dokumen</th>
-                <th>Payee</th>
+              <tr class="text-xs text-slate-500">
+                <th class="py-2 pr-3">BelanjaID</th>
+                <th class="py-2 pr-3">Tarikh</th>
+                <th class="py-2 pr-3">Perihal / Catatan</th>
+                <th class="py-2 pr-3">Amaun</th>
+                <th class="py-2 pr-3">Status</th>
+                <th class="py-2 pr-3">No Dokumen</th>
+                <th class="py-2 pr-3">Payee</th>
               </tr>
             </thead>
             <tbody>${belanjaRows}</tbody>
           </table>
         </div>
+
+        ${session.role==="ADMIN" ? `
+          <div class="card p-4 mt-4">
+            <div class="text-base font-extrabold text-slate-900 mb-2">Tambah Belanja (waran ini)</div>
+            <div class="grid md:grid-cols-6 gap-3">
+              <input class="inp md:col-span-2" placeholder="Perihal" data-add-perihal="${w.NoWaran}">
+              <input class="inp" placeholder="Amaun" inputmode="decimal" data-add-amaun="${w.NoWaran}">
+              <select class="inp" data-add-status="${w.NoWaran}">
+                ${STATUS_BELANJA.map(s=>`<option value="${s}">${s}</option>`).join("")}
+              </select>
+              <input class="inp" placeholder="No Dokumen" data-add-doc="${w.NoWaran}">
+              <input class="inp" placeholder="Payee" data-add-payee="${w.NoWaran}">
+              <input class="inp" type="date" data-add-tarikh="${w.NoWaran}">
+              <input class="inp md:col-span-5" placeholder="Catatan (optional)" data-add-catatan="${w.NoWaran}">
+            </div>
+            <div class="mt-3 flex items-center gap-3">
+              <button class="btn bg-blue-600 text-white" data-add-btn="${w.NoWaran}">Tambah Belanja</button>
+              <div class="text-sm muted" data-add-msg="${w.NoWaran}"></div>
+            </div>
+          </div>
+        ` : ``}
+      `;
+
+      root.appendChild(card);
+
+      // listeners
+      if (session.role === "ADMIN") {
+        // edit belanja status
+        card.querySelectorAll("[data-status-edit]").forEach(sel=>{
+          sel.addEventListener("change", async ()=>{
+            const belanjaId = sel.getAttribute("data-status-edit");
+            const newStatus = sel.value;
+            sel.disabled = true;
+            try{
+              await api("updateBelanjaStatus",{BelanjaID: belanjaId, StatusBelanja: newStatus});
+              await loadAll();
+            }catch(e){
+              alert("Update status gagal: " + e.message);
+            }finally{
+              sel.disabled = false;
+            }
+          });
+        });
+
+        // edit waran status
+        const ws = card.querySelector("[data-waran-status]");
+        if (ws){
+          ws.addEventListener("change", async ()=>{
+            ws.disabled = true;
+            try{
+              await api("updateWaranStatus",{WaranID: ws.getAttribute("data-waran-status"), StatusWaran: ws.value});
+              await loadAll();
+            }catch(e){
+              alert("Update status waran gagal: " + e.message);
+            }finally{
+              ws.disabled = false;
+            }
+          });
+        }
+
+        // add belanja
+        const btn = card.querySelector("[data-add-btn]");
+        if (btn){
+          btn.addEventListener("click", async ()=>{
+            const no = btn.getAttribute("data-add-btn");
+            const perihal = card.querySelector(`[data-add-perihal="${no}"]`).value.trim();
+            const amaun = card.querySelector(`[data-add-amaun="${no}"]`).value.trim();
+            const status = card.querySelector(`[data-add-status="${no}"]`).value;
+            const doc = card.querySelector(`[data-add-doc="${no}"]`).value.trim();
+            const payee = card.querySelector(`[data-add-payee="${no}"]`).value.trim();
+            const tarikh = card.querySelector(`[data-add-tarikh="${no}"]`).value;
+            const cat = card.querySelector(`[data-add-catatan="${no}"]`).value.trim();
+            const msg = card.querySelector(`[data-add-msg="${no}"]`);
+
+            if (!perihal || !amaun || !tarikh){
+              msg.textContent = "Isi Perihal, Amaun & Tarikh dulu.";
+              return;
+            }
+
+            btn.disabled = true;
+            msg.textContent = "Saving...";
+            try{
+              await api("addBelanja", {
+                NoWaran: no,
+                Tarikh: tarikh,
+                Perihal: perihal,
+                Amaun: Number(amaun),
+                StatusBelanja: status,
+                NoDokumen: doc,
+                Payee: payee,
+                Catatan: cat
+              });
+              msg.textContent = "OK ✅";
+              await loadAll();
+            }catch(e){
+              msg.textContent = "Gagal: " + e.message;
+            }finally{
+              btn.disabled = false;
+            }
+          });
+        }
+      }
+    }
+  }
+
+  // ====== Load / Auth ======
+  async function loadAll(){
+    const res = await api("getAll");
+    cache = res;
+    $("lastSync").textContent = "Last sync: " + new Date(res.ringkasan.lastSync).toLocaleString("ms-MY");
+    renderSummary(res.ringkasan);
+    renderWaranList(res);
+  }
+
+  function setLoggedInUI(){
+    $("loginCard").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    $("userBox").classList.remove("hidden");
+    $("logoutBtn").classList.remove("hidden");
+
+    $("userBox").innerHTML = `
+      <div class="text-right">
+        <div class="font-bold text-slate-900">${session.email}</div>
+        <div class="text-xs muted">${session.role}</div>
       </div>
-
-      ${isAdmin ? `
-      <div class="mt-5 card p-4 bg-slate-50 border-slate-200">
-        <div class="flex items-center justify-between">
-          <div class="font-extrabold text-slate-900">Tambah Belanja (waran ini)</div>
-          <div class="text-sm muted">Committed: HANTAR PERMOHONAN / SELESAI</div>
-        </div>
-
-        <div class="row mt-4">
-          <div class="col-4">
-            <input class="inp" data-b-perihal placeholder="Perihal" />
-          </div>
-          <div class="col-2">
-            <input class="inp" data-b-amaun placeholder="Amaun" inputmode="decimal" />
-          </div>
-          <div class="col-2">
-            <select class="inp" data-b-status>
-              ${STATUS_BELANJA.map(x=>`<option value="${x}">${x}</option>`).join("")}
-            </select>
-          </div>
-          <div class="col-2">
-            <input class="inp" data-b-doc placeholder="No Dokumen" />
-          </div>
-          <div class="col-2">
-            <input class="inp" data-b-payee placeholder="Payee" />
-          </div>
-          <div class="col-2">
-            <input class="inp" data-b-tarikh type="date" />
-          </div>
-          <div class="col-10">
-            <input class="inp" data-b-catatan placeholder="Catatan (optional)" />
-          </div>
-          <div class="col-12 flex justify-end">
-            <button class="btn btn-primary" data-add-belanja>Tambah Belanja</button>
-          </div>
-        </div>
-
-        <div class="text-sm mt-3 hidden" data-b-msg></div>
-      </div>
-      ` : ``}
     `;
 
-    // Hook button add belanja
-    if(session.role === "ADMIN"){
-      const btn = card.querySelector("[data-add-belanja]");
-      btn.addEventListener("click", async ()=>{
-        const perihal = (card.querySelector("[data-b-perihal]").value||"").trim();
-        const amaun = (card.querySelector("[data-b-amaun]").value||"").trim();
-        const status = (card.querySelector("[data-b-status]").value||"KERTAS KERJA").trim();
-        const noDokumen = (card.querySelector("[data-b-doc]").value||"").trim();
-        const payee = (card.querySelector("[data-b-payee]").value||"").trim();
-        const tarikh = (card.querySelector("[data-b-tarikh]").value||"").trim();
-        const catatan = (card.querySelector("[data-b-catatan]").value||"").trim();
-        const msg = card.querySelector("[data-b-msg]");
-
-        const setLocalMsg = (m, ok=true)=>{
-          msg.classList.remove("hidden");
-          msg.className = `text-sm mt-3 ${ok ? "text-emerald-700" : "text-red-600"}`;
-          msg.textContent = m;
-          setTimeout(()=> msg.classList.add("hidden"), 3500);
-        };
-
-        if(!perihal || !amaun){
-          setLocalMsg("Perihal & Amaun wajib isi.", false);
-          return;
-        }
-
-        try{
-          btn.disabled = true;
-          btn.textContent = "Saving...";
-          await apiPost("addBelanja", {
-            WaranID: w.WaranID,
-            NoWaran: w.NoWaran,
-            Tarikh: tarikh,
-            Perihal: perihal,
-            Amaun: amaun,
-            StatusBelanja: status,
-            NoDokumen: noDokumen,
-            Payee: payee,
-            Catatan: catatan
-          });
-          await loadAll();
-          setLocalMsg("Belanja berjaya ditambah.");
-        }catch(err){
-          setLocalMsg("Gagal: " + err.message, false);
-        }finally{
-          btn.disabled = false;
-          btn.textContent = "Tambah Belanja";
-        }
-      });
+    if (session.role === "ADMIN"){
+      $("addWaranCard").classList.remove("hidden");
+    } else {
+      $("addWaranCard").classList.add("hidden");
     }
-
-    root.appendChild(card);
-  }
-}
-
-/** =========================
- * EVENTS
- * ========================= */
-el("btnLogout").addEventListener("click", ()=>{
-  clearSession();
-  renderAuthUI(false);
-  setLoginError("");
-});
-
-el("btnRefresh").addEventListener("click", async ()=>{
-  try { await loadAll(); }
-  catch(err){ alert("Refresh gagal: " + err.message); }
-});
-
-el("btnAddWaran").addEventListener("click", async ()=>{
-  const noWaran = (el("inNoWaran").value||"").trim();
-  const tarikhTerima = (el("inTarikhTerima").value||"").trim();
-  const perihal = (el("inPerihalWaran").value||"").trim();
-  const jumlah = (el("inJumlahWaran").value||"").trim();
-  const status = (el("inStatusWaran").value||"ACTIVE").trim();
-
-  if(!noWaran || !tarikhTerima || !perihal || !jumlah){
-    showMsg("waranMsg", "No Waran, Tarikh Terima, Perihal, Jumlah wajib isi.", false);
-    return;
   }
 
-  const btn = el("btnAddWaran");
-  try{
-    btn.disabled = true;
-    btn.textContent = "Saving...";
-    await apiPost("addWaran", {
-      NoWaran: noWaran,
-      TarikhTerima: tarikhTerima,
-      Perihal: perihal,
-      JumlahWaran: jumlah,
-      StatusWaran: status
-    });
-    el("inNoWaran").value = "";
-    el("inTarikhTerima").value = "";
-    el("inPerihalWaran").value = "";
-    el("inJumlahWaran").value = "";
-    el("inStatusWaran").value = "ACTIVE";
-    await loadAll();
-    showMsg("waranMsg", "Waran berjaya ditambah.");
-  }catch(err){
-    showMsg("waranMsg", "Gagal: " + err.message, false);
-  }finally{
-    btn.disabled = false;
-    btn.textContent = "Tambah Waran";
+  function setLoggedOutUI(){
+    $("loginCard").classList.remove("hidden");
+    $("app").classList.add("hidden");
+    $("userBox").classList.add("hidden");
+    $("logoutBtn").classList.add("hidden");
   }
-});
 
-el("searchWaran").addEventListener("input", ()=> renderWaranList());
+  async function tryMe(){
+    if (!token) return false;
+    try{
+      const res = await api("me");
+      session = res.session;
+      setLoggedInUI();
+      await loadAll();
+      return true;
+    }catch(e){
+      token = "";
+      localStorage.removeItem("LA_TOKEN");
+      return false;
+    }
+  }
 
-/** =========================
- * INIT
- * ========================= */
-window.onload = () => {
-  // Render login button
-  window.google?.accounts?.id?.initialize({
-    client_id: CONFIG.GOOGLE_CLIENT_ID,
-    callback: (resp) => loginWithGoogle(resp.credential),
-    auto_select: true,
-    cancel_on_tap_outside: false,
+  // ====== Events ======
+  $("loginBtn").addEventListener("click", async ()=>{
+    const email = $("emailInp").value.trim().toLowerCase();
+    $("loginMsg").textContent = "";
+    if (!email){
+      $("loginMsg").innerHTML = `<span class="text-rose-600 font-bold">Isi email dulu.</span>`;
+      return;
+    }
+    $("loginBtn").disabled = true;
+    $("loginMsg").innerHTML = `<span class="muted">Logging in...</span>`;
+    try{
+      const res = await jsonp("login", { email, callback: "cb_login_"+Math.random().toString(16).slice(2) });
+      if (!res.ok) throw new Error(res.error || "Login failed");
+      token = res.token;
+      localStorage.setItem("LA_TOKEN", token);
+      session = { email: res.email, role: res.role };
+      setLoggedInUI();
+      await loadAll();
+      $("loginMsg").innerHTML = `<span class="text-emerald-700 font-bold">OK ✅</span>`;
+    }catch(e){
+      $("loginMsg").innerHTML = `<span class="text-rose-600 font-bold">Login gagal: ${e.message}</span>`;
+    }finally{
+      $("loginBtn").disabled = false;
+    }
   });
 
-  window.google?.accounts?.id?.renderButton(
-    el("gsiBtn"),
-    { theme: "outline", size: "large", shape: "pill", text: "continue_with" }
-  );
+  $("logoutBtn").addEventListener("click", ()=>{
+    token = "";
+    session = null;
+    cache = null;
+    localStorage.removeItem("LA_TOKEN");
+    setLoggedOutUI();
+  });
 
-  // If token exist, try load
-  if(session.token){
-    renderAuthUI(true);
-    loadAll().catch(err=>{
-      // Token expired / invalid
-      clearSession();
-      renderAuthUI(false);
-      setLoginError("Session tamat. Sila login semula.");
-    });
-  }else{
-    renderAuthUI(false);
-  }
-};
+  $("refreshBtn").addEventListener("click", async ()=>{
+    $("refreshBtn").disabled = true;
+    try{ await loadAll(); } finally { $("refreshBtn").disabled = false; }
+  });
+
+  $("searchInp").addEventListener("input", ()=>{
+    if (cache) renderWaranList(cache);
+  });
+
+  $("addWaranBtn").addEventListener("click", async ()=>{
+    const NoWaran = $("wNo").value.trim();
+    const TarikhTerima = $("wTarikh").value;
+    const Perihal = $("wPerihal").value.trim();
+    const JumlahWaran = $("wJumlah").value.trim();
+    const StatusWaran = $("wStatus").value;
+    const msg = $("addWaranMsg");
+
+    msg.textContent = "";
+    if (!NoWaran || !TarikhTerima || !Perihal || !JumlahWaran){
+      msg.textContent = "Isi No Waran, Tarikh, Perihal, Jumlah dulu.";
+      return;
+    }
+
+    $("addWaranBtn").disabled = true;
+    msg.textContent = "Saving...";
+    try{
+      await api("addWaran", {
+        NoWaran, TarikhTerima, Perihal,
+        JumlahWaran: Number(JumlahWaran),
+        StatusWaran
+      });
+      msg.textContent = "OK ✅";
+      $("wNo").value = "";
+      $("wTarikh").value = "";
+      $("wPerihal").value = "";
+      $("wJumlah").value = "";
+      $("wStatus").value = "ACTIVE";
+      await loadAll();
+    }catch(e){
+      msg.textContent = "Gagal: " + e.message;
+    }finally{
+      $("addWaranBtn").disabled = false;
+    }
+  });
+
+  // boot
+  (async ()=>{
+    setLoggedOutUI();
+    await tryMe();
+  })();
 </script>
 </body>
 </html>
