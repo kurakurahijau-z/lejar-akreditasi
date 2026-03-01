@@ -13,11 +13,14 @@
     body{ background: linear-gradient(180deg,#f6f8ff,#f4fbff); }
     .card{ border:1px solid rgba(15,23,42,.08); border-radius:18px; background:#fff; box-shadow: 0 10px 25px rgba(2,6,23,.05); }
     .pill{ border:1px solid rgba(15,23,42,.08); border-radius:999px; padding:2px 10px; font-size:12px; }
-    .btn{ border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+    .btn{ border-radius: 12px; padding: 10px 14px; font-weight: 700; }
     .btn-primary{ background:#2563eb; color:#fff; }
     .btn-dark{ background:#0f172a; color:#fff; }
+    .btn-outline{ border:1px solid rgba(15,23,42,.14); background:#fff; color:#0f172a; }
     .input{ border:1px solid rgba(15,23,42,.12); border-radius:12px; padding:10px 12px; width:100%; }
     .muted{ color:#64748b; }
+    .mini{ font-size:12px; color:#64748b; }
+    .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
   </style>
 </head>
 
@@ -27,7 +30,9 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
-          <p class="muted mt-2">Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.</p>
+          <p class="muted mt-2">
+            Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.
+          </p>
         </div>
         <div id="userBox" class="text-right"></div>
       </div>
@@ -50,12 +55,13 @@
       <div class="card p-6 mt-6">
         <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
           <div class="flex flex-col md:flex-row gap-3 md:items-center">
-            <select id="yearFilter" class="input md:w-40"></select>
-            <input id="q" class="input md:w-96" placeholder="Cari NoWaran / Perihal / Payee / No Dokumen..." />
+            <select id="yearFilter" class="input md:w-44"></select>
+            <input id="q" class="input md:w-[28rem]" placeholder="Cari NoWaran / Perihal / Payee / No Dokumen..." />
             <button class="btn btn-dark" id="btnSearch">Cari</button>
+            <button class="btn btn-outline" id="btnClear">Reset</button>
           </div>
           <div class="flex items-center gap-3 justify-between md:justify-end">
-            <div class="muted text-sm" id="lastSync"></div>
+            <div class="mini" id="lastSync"></div>
             <button class="btn btn-dark" id="btnRefresh">Refresh</button>
           </div>
         </div>
@@ -68,7 +74,7 @@
           <div class="card p-4">
             <div class="text-sm muted">TOTAL PENERIMAAN</div>
             <div class="text-2xl font-extrabold" id="sumPenerimaan">RM 0</div>
-            <div class="text-xs muted mt-1">Jumlah semua waran (bukan CLOSED)</div>
+            <div class="text-xs muted mt-1">Jumlah semua waran (exclude CLOSED)</div>
           </div>
           <div class="card p-4">
             <div class="text-sm muted">TOTAL COMMITTED</div>
@@ -135,7 +141,9 @@
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec";
+
+  // ✅ FIX: guna URL Apps Script terkini kau
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
   // ================== STATE ==================
   const state = {
@@ -185,7 +193,7 @@
     box.innerHTML = `
       <div class="text-sm muted">${esc(state.profile.email)}</div>
       <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
-      <button class="btn mt-2" style="border:1px solid rgba(15,23,42,.12)" id="btnLogout">Logout</button>
+      <button class="btn mt-2 btn-outline" id="btnLogout">Logout</button>
     `;
     el("btnLogout").onclick = ()=>{
       localStorage.removeItem("LA_TOKEN");
@@ -214,7 +222,7 @@
     el("sumAvailable").textContent = money(data.summary.totalAvailable);
 
     el("countWaran").textContent = `${(data.waran||[]).length} waran`;
-    el("lastSync").textContent = `Last sync: ${new Date().toISOString()}`;
+    el("lastSync").textContent = `Last sync: ${new Date().toLocaleString("ms-MY")}`;
 
     renderYearFilter(data.waran || []);
 
@@ -228,12 +236,10 @@
         ? `<span class="pill bg-slate-100 text-slate-700 font-bold">CLOSED</span>`
         : `<span class="pill bg-emerald-50 text-emerald-700 font-bold">ACTIVE</span>`;
 
-      const disableForm = closed ? "opacity-60 pointer-events-none" : "";
-
       const belanjaRows = (w.belanja||[]).map(b=>{
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
         const select = `
-          <select class="input" data-belanja="${esc(b.belanjaId)}">
+          <select class="input" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
         `;
@@ -250,7 +256,7 @@
             <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
             <td class="py-3 pr-3 align-top">${select}</td>
             <td class="py-3 pr-3 align-top">
-              <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}">Update</button>
+              <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
             </td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
@@ -267,7 +273,7 @@
             </div>
             <div class="flex items-center gap-2">
               ${statusPill}
-              <button class="btn" style="border:1px solid rgba(15,23,42,.12)" data-pdf="${esc(w.waranId)}">Export PDF</button>
+              <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
             </div>
           </div>
 
@@ -308,7 +314,7 @@
             ` : `<div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>`}
           </div>
 
-          <div class="mt-6 ${disableForm}">
+          <div class="mt-6 ${closed ? 'disabledWrap' : ''}">
             <div class="card p-5">
               <div class="font-bold">Tambah Belanja (waran ini)</div>
               <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-3">
@@ -338,7 +344,6 @@
       `;
     }).join("");
 
-    // bind events after render
     bindDynamicActions();
   }
 
@@ -403,7 +408,6 @@
         const waranId = btn.getAttribute("data-pdf");
         try{
           const r = await api("exportWaranPdf", { token: state.token, waranId });
-          // open PDF link
           window.open(r.url, "_blank");
         }catch(e){
           alert("Gagal export PDF: " + (e.error || JSON.stringify(e)));
@@ -412,7 +416,6 @@
     });
   }
 
-  // ================== Load / Refresh ==================
   async function refresh(){
     const year = el("yearFilter").value || "";
     const q = el("q").value.trim();
@@ -450,9 +453,13 @@
   }
 
   async function bootstrap(){
-    // bind fixed controls
     el("btnRefresh").onclick = refresh;
     el("btnSearch").onclick = refresh;
+    el("btnClear").onclick = ()=>{
+      el("q").value = "";
+      el("yearFilter").value = "";
+      refresh();
+    };
     el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
     el("yearFilter").addEventListener("change", refresh);
 
@@ -482,7 +489,7 @@
       }
     };
 
-    // if already has token, try auto-login (me)
+    // auto-login
     if(state.token){
       try{
         const me = await api("me", { token: state.token });
@@ -499,7 +506,6 @@
       }
     }
 
-    // init google button
     const wait = setInterval(()=>{
       if (window.google && google.accounts && google.accounts.id){
         clearInterval(wait);
