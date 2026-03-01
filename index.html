@@ -2,659 +2,700 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Lejar Akreditasi</title>
 
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
-    html, body { height: 100%; }
-    body { background: #f4f6fb; }
-    .card { background:#fff; border:1px solid rgba(15,23,42,.08); border-radius:16px; }
-    .shadow-soft { box-shadow: 0 12px 30px rgba(15,23,42,.06); }
-    .chip { border:1px solid rgba(15,23,42,.10); border-radius:999px; padding:.20rem .55rem; font-size:.75rem; }
-    .table th { font-weight:600; color:#475569; font-size:.75rem; }
-    .table td { font-size:.875rem; color:#0f172a; }
+    * { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .card { border: 1px solid rgba(15, 23, 42, .08); }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 
-<body class="min-h-full">
-  <div class="max-w-6xl mx-auto p-5 md:p-8">
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-6xl mx-auto px-4 py-10">
 
-    <div class="card shadow-soft p-6">
+    <!-- Header -->
+    <div class="card bg-white rounded-2xl p-6 shadow-sm">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
+          <h1 class="text-3xl font-extrabold tracking-tight">Lejar Akreditasi</h1>
           <p class="text-slate-600 mt-1">
-            Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status).
+            Track penerimaan waran &amp; perbelanjaan ikut kod waran (Committed ikut status).
           </p>
         </div>
 
-        <div class="flex items-center gap-3 justify-between md:justify-end">
-          <div class="text-right">
-            <div class="text-sm text-slate-600" id="userEmail">—</div>
-            <div class="text-xs text-slate-500" id="userRole">—</div>
+        <div class="flex items-center gap-3">
+          <div id="userBadge" class="hidden items-center gap-2">
+            <span id="userEmail" class="text-sm text-slate-700"></span>
+            <span id="userRole" class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">ADMIN</span>
+            <button id="btnLogout" class="px-4 py-2 rounded-xl border bg-white hover:bg-slate-50 text-sm">Logout</button>
           </div>
-          <button id="btnLogout" class="hidden px-4 py-2 rounded-xl border bg-white hover:bg-slate-50 text-slate-700">
-            Logout
-          </button>
         </div>
       </div>
 
-      <div id="loginBox" class="mt-5">
-        <div class="flex flex-col md:flex-row items-start md:items-center gap-3">
-          <div class="text-slate-700 text-sm">
+      <!-- Login area -->
+      <div id="loginArea" class="mt-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div class="text-slate-700">
             Sila login guna Google (whitelist sahaja boleh masuk).
           </div>
-          <div id="gbtn"></div>
+          <div class="flex items-center gap-3">
+            <div id="gsiBtn"></div>
+          </div>
         </div>
-        <div id="loginMsg" class="mt-3 text-sm text-amber-700 hidden"></div>
+        <div id="loginMsg" class="mt-3 text-sm text-rose-600 hidden"></div>
       </div>
     </div>
 
-    <div id="app" class="hidden">
+    <!-- App -->
+    <div id="app" class="hidden mt-8 space-y-8">
 
-      <div class="card shadow-soft p-6 mt-6">
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="text-xl font-bold text-slate-900">Ringkasan</h2>
-          <div class="flex items-center gap-2">
-            <div class="text-xs text-slate-500" id="lastSync">Last sync: —</div>
-            <button id="btnRefresh" class="px-3 py-2 rounded-xl border bg-white hover:bg-slate-50 text-slate-700 text-sm">
-              Refresh
-            </button>
+      <!-- Summary -->
+      <div class="card bg-white rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-2xl font-bold">Ringkasan</h2>
+          <div class="flex items-center gap-3">
+            <div class="text-xs text-slate-500">
+              Last sync: <span id="lastSync">-</span>
+            </div>
+            <button id="btnRefresh" class="px-4 py-2 rounded-xl border bg-white hover:bg-slate-50 text-sm">Refresh</button>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-          <div class="card p-4">
-            <div class="text-xs text-slate-500 font-semibold">TOTAL PENERIMAAN</div>
-            <div class="text-2xl font-extrabold text-slate-900 mt-1" id="sumPenerimaan">RM 0</div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
+          <div class="rounded-2xl border p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold">Total Penerimaan</div>
+            <div id="sumTotalWaran" class="text-2xl font-extrabold mt-1">RM 0</div>
             <div class="text-xs text-slate-500 mt-1">Jumlah semua waran (bukan CLOSED)</div>
           </div>
 
-          <div class="card p-4">
-            <div class="text-xs text-slate-500 font-semibold">TOTAL COMMITTED</div>
-            <div class="text-2xl font-extrabold text-slate-900 mt-1" id="sumCommitted">RM 0</div>
+          <div class="rounded-2xl border p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold">Total Committed</div>
+            <div id="sumCommitted" class="text-2xl font-extrabold mt-1">RM 0</div>
             <div class="text-xs text-slate-500 mt-1">HANTAR PERMOHONAN + SELESAI</div>
           </div>
 
-          <div class="card p-4">
-            <div class="text-xs text-slate-500 font-semibold">TOTAL DRAFT</div>
-            <div class="text-2xl font-extrabold text-slate-900 mt-1" id="sumDraft">RM 0</div>
+          <div class="rounded-2xl border p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold">Total Draft</div>
+            <div id="sumDraft" class="text-2xl font-extrabold mt-1">RM 0</div>
             <div class="text-xs text-slate-500 mt-1">KERTAS KERJA + BATAL</div>
           </div>
 
-          <div class="card p-4">
-            <div class="text-xs text-slate-500 font-semibold">TOTAL AVAILABLE</div>
-            <div class="text-2xl font-extrabold text-slate-900 mt-1" id="sumAvailable">RM 0</div>
+          <div class="rounded-2xl border p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold">Total Available</div>
+            <div id="sumAvailable" class="text-2xl font-extrabold mt-1">RM 0</div>
             <div class="text-xs text-slate-500 mt-1">TotalWaran - Committed</div>
           </div>
         </div>
       </div>
 
-      <div class="card shadow-soft p-6 mt-6">
-        <div class="flex items-start justify-between gap-3">
+      <!-- Add Waran -->
+      <div id="adminPanel" class="card bg-white rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-bold text-slate-900">Tambah Waran</h2>
-            <p class="text-sm text-slate-600 mt-1">Waran baru akan muncul sebagai card. Belanja direkod dalam card waran tu.</p>
+            <h2 class="text-2xl font-bold">Tambah Waran</h2>
+            <div class="text-sm text-slate-600 mt-1">
+              Waran baru akan muncul sebagai card. Belanja akan direkod dalam card waran tu.
+            </div>
           </div>
-          <span id="adminOnlyBadge" class="hidden chip bg-emerald-50 text-emerald-700">ADMIN MODE</span>
+          <span class="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-semibold">ADMIN MODE</span>
         </div>
 
-        <div id="adminAddWaran" class="mt-4 hidden">
-          <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
-            <input id="w_no" class="px-4 py-2 rounded-xl border bg-white" placeholder="No Waran (contoh: A1234)" />
-            <input id="w_tarikh" type="date" class="px-4 py-2 rounded-xl border bg-white" />
-            <input id="w_perihal" class="md:col-span-2 px-4 py-2 rounded-xl border bg-white" placeholder="Perihal" />
-            <input id="w_jumlah" type="number" min="0" step="0.01" class="px-4 py-2 rounded-xl border bg-white" placeholder="Jumlah (RM)" />
-            <select id="w_status" class="px-4 py-2 rounded-xl border bg-white">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-5">
+          <input id="inNoWaran" class="border rounded-xl px-3 py-2" placeholder="No Waran (contoh: A1234)" />
+          <input id="inTarikhTerima" type="date" class="border rounded-xl px-3 py-2" />
+          <input id="inPerihalWaran" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Perihal" />
+          <div class="flex gap-3">
+            <input id="inJumlahWaran" type="number" class="border rounded-xl px-3 py-2 w-full" placeholder="Jumlah (RM)" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mt-4">
+          <div class="flex items-center gap-3">
+            <select id="inStatusWaran" class="border rounded-xl px-3 py-2">
               <option value="ACTIVE">ACTIVE</option>
               <option value="CLOSED">CLOSED</option>
             </select>
           </div>
-
-          <button id="btnAddWaran" class="mt-3 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+          <button id="btnAddWaran" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">
             Tambah Waran
           </button>
-
-          <div id="addWaranMsg" class="mt-2 text-sm text-amber-700 hidden"></div>
         </div>
 
-        <div id="viewerMsg" class="mt-4 hidden text-sm text-slate-600">
-          Akaun kau mode <b>VIEWER</b>. Kau boleh tengok sahaja.
-        </div>
+        <div id="adminMsg" class="mt-3 text-sm text-rose-600 hidden"></div>
       </div>
 
-      <div class="card shadow-soft p-6 mt-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <h2 class="text-xl font-bold text-slate-900">Waran</h2>
-          <input id="q" class="px-4 py-2 rounded-xl border bg-white w-full md:w-80"
-                 placeholder="Cari NoWaran / Perihal..." />
+      <!-- Waran list -->
+      <div class="card bg-white rounded-2xl p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <h2 class="text-2xl font-bold">Waran</h2>
+          <input id="inSearch" class="border rounded-xl px-3 py-2 w-full md:w-80" placeholder="Cari NoWaran / Perihal..." />
         </div>
 
-        <div id="waranList" class="mt-4 space-y-4"></div>
+        <div id="waranWrap" class="mt-5 space-y-5"></div>
       </div>
     </div>
   </div>
 
-  <script>
-    const CONFIG = {
-      CLIENT_ID: "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com",
-      BASE_URL: "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec",
-      ACTION_LIST_WARAN: "listWaran",
-      ACTION_LIST_BELANJA: "listBelanja",
-      ACTION_ADD_WARAN: "addWaran",
-      ACTION_ADD_BELANJA: "addBelanja",
-      ACTION_SET_WARAN_STATUS: "setWaranStatus"
-    };
+<script>
+/** =========================
+ *  CONFIG (WAJIB TUKAR)
+ *  ========================= */
+const CONFIG = {
+  CLIENT_ID: "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com",
+  API_URL: "https://script.google.com/macros/s/AKfycbzMmHAEpCi3v0l473zywDT-2XDucMf6X9-XPya0WVA2rKqGZJbb0vWnfOgWqrOlrY364Q/exec",
+};
 
-    const state = { token:null, user:null, warans:[], belanjas:[], lastSync:null };
+/** =========================
+ *  STATUS RULES
+ *  ========================= */
+const STATUS = {
+  COMMITTED: ["HANTAR PERMOHONAN", "SELESAI"],
+  DRAFT: ["KERTAS KERJA", "BATAL"],
+};
 
-    const $ = (sel) => document.querySelector(sel);
-    const show = (el) => el.classList.remove("hidden");
-    const hide = (el) => el.classList.add("hidden");
+/** =========================
+ *  STATE
+ *  ========================= */
+const state = {
+  loggedIn: false,
+  email: "",
+  role: "ADMIN",
+  sessionToken: "",        // token dari backend (jika backend bagi)
+  idToken: "",             // fallback: id_token google
+  warans: [],              // list waran
+  belanjaByWaranId: {},    // map waranId -> array belanja (INI FIX PENTING)
+  lastSync: null,
+};
 
-    function fmtMoney(n){
-      n = Number(n || 0);
-      return "RM " + n.toLocaleString("en-MY", { maximumFractionDigits: 2 });
-    }
-    function fmtDate(d){
-      if (!d) return "";
-      const s = String(d);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-      return s;
-    }
-    function upper(s){ return String(s || "").toUpperCase().trim(); }
+function $(id){ return document.getElementById(id); }
 
-    function isCommittedStatus(s){
-      s = upper(s);
-      return s === "HANTAR PERMOHONAN" || s === "SELESAI";
-    }
-    function isDraftStatus(s){
-      s = upper(s);
-      return s === "KERTAS KERJA" || s === "BATAL";
-    }
-    function percent(part, total){
-      part = Number(part || 0);
-      total = Number(total || 0);
-      if (total <= 0) return 0;
-      return Math.max(0, Math.min(100, Math.round((part / total) * 100)));
-    }
-    function getWaranState(w){
-      const manual = upper(w.StatusWaran || w.statusWaran || "ACTIVE");
-      const available = Number(w.Available ?? w.available ?? 0);
-      if (available <= 0) return "CLOSED";
-      if (manual === "CLOSED") return "CLOSED";
-      return "ACTIVE";
-    }
+function money(n){
+  const v = Number(n || 0);
+  return "RM " + v.toLocaleString("ms-MY");
+}
 
-    function computeSummary(warans, belanjas){
-      const totalPenerimaan = warans
-        .filter(w => upper(w.StatusWaran || w.statusWaran || "ACTIVE") !== "CLOSED")
-        .reduce((sum, w) => sum + Number(w.JumlahWaran ?? w.jumlahWaran ?? w.Jumlah ?? 0), 0);
+function fmtDate(iso){
+  if(!iso) return "-";
+  // iso boleh jadi "2026-02-16" atau tarikh excel serial (kadang2)
+  // kalau number serial, backend patut normalize; tapi kita guard:
+  if(typeof iso === "number") return String(iso);
+  return String(iso);
+}
 
-      const totalCommitted = belanjas
-        .filter(b => isCommittedStatus(b.StatusBelanja ?? b.statusBelanja ?? b.Status ?? b.status))
-        .reduce((sum, b) => sum + Number(b.Amaun ?? b.amaun ?? b.amount ?? 0), 0);
+function show(el){ el.classList.remove("hidden"); }
+function hide(el){ el.classList.add("hidden"); }
 
-      const totalDraft = belanjas
-        .filter(b => isDraftStatus(b.StatusBelanja ?? b.statusBelanja ?? b.Status ?? b.status))
-        .reduce((sum, b) => sum + Number(b.Amaun ?? b.amaun ?? b.amount ?? 0), 0);
+function setMsg(el, msg){
+  el.textContent = msg || "";
+  if(msg) show(el); else hide(el);
+}
 
-      const totalAvailable = totalPenerimaan - totalCommitted;
-      return { totalPenerimaan, totalCommitted, totalDraft, totalAvailable };
-    }
+/** =========================
+ *  API HELPERS
+ *  ========================= */
+async function apiGet(params){
+  const url = new URL(CONFIG.API_URL);
+  Object.entries(params || {}).forEach(([k,v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString(), { method: "GET" });
+  const txt = await res.text();
+  let data;
+  try { data = JSON.parse(txt); } catch(e) { data = { ok:false, raw: txt }; }
+  if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
 
-    function setSummaryUI(sum){
-      $("#sumPenerimaan").textContent = fmtMoney(sum.totalPenerimaan);
-      $("#sumCommitted").textContent  = fmtMoney(sum.totalCommitted);
-      $("#sumDraft").textContent      = fmtMoney(sum.totalDraft);
-      $("#sumAvailable").textContent  = fmtMoney(sum.totalAvailable);
-    }
+async function apiPost(body){
+  const res = await fetch(CONFIG.API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {})
+  });
+  const txt = await res.text();
+  let data;
+  try { data = JSON.parse(txt); } catch(e) { data = { ok:false, raw: txt }; }
+  if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
 
-    // ====== API (FIXED: avoid preflight by using form-urlencoded) ======
-    async function apiGet(action, params = {}){
-      const url = new URL(CONFIG.BASE_URL);
-      url.searchParams.set("action", action);
-      if (state.token) url.searchParams.set("token", state.token);
-      Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+function authPayload(){
+  // backend kau boleh pilih nak guna sessionToken atau id_token
+  return {
+    token: state.sessionToken || "",
+    id_token: state.idToken || "",
+  };
+}
 
-      const res = await fetch(url.toString(), { method: "GET" });
-      const data = await res.json().catch(()=>null);
-      if (!data) throw new Error("Response tidak valid");
-      if (data.ok === false) throw new Error(data.error || "API error");
-      return data;
-    }
+/** =========================
+ *  LOGIN
+ *  ========================= */
+function initGoogle(){
+  window.google.accounts.id.initialize({
+    client_id: CONFIG.CLIENT_ID,
+    callback: async (resp) => {
+      try{
+        setMsg($("loginMsg"), "");
+        state.idToken = resp.credential || "";
+        // login ke backend (whitelist check kat Apps Script)
+        const out = await apiPost({ action: "login", id_token: state.idToken });
+        if(!out?.ok) throw new Error(out?.error || "Login gagal");
 
-    async function apiPost(action, body = {}){
-      const form = new URLSearchParams();
-      form.set("action", action);
-      if (state.token) form.set("token", state.token);
+        state.loggedIn = true;
+        state.email = out.email || out.user?.email || "";
+        state.role = out.role || "ADMIN";
+        state.sessionToken = out.token || out.sessionToken || "";
 
-      Object.entries(body).forEach(([k,v]) => {
-        if (v === undefined || v === null) return;
-        form.set(k, String(v));
-      });
-
-      const res = await fetch(CONFIG.BASE_URL, {
-        method: "POST",
-        body: form
-        // ✅ jangan set Content-Type manually (biar browser set sendiri)
-        // ✅ ini elak OPTIONS preflight
-      });
-
-      const data = await res.json().catch(()=>null);
-      if (!data) throw new Error("Response tidak valid");
-      if (data.ok === false) throw new Error(data.error || "API error");
-      return data;
-    }
-
-    // ===== AUTH =====
-    function initGoogleButton(){
-      google.accounts.id.initialize({
-        client_id: CONFIG.CLIENT_ID,
-        callback: async (resp) => {
-          await handleLogin(resp.credential);
-        }
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("gbtn"),
-        { theme: "outline", size: "large", text: "signin_with", shape: "pill" }
-      );
-    }
-
-    async function handleLogin(idToken){
-      hide($("#loginMsg"));
-      $("#loginMsg").textContent = "";
-
-      try {
-        // ✅ login via form-urlencoded (no preflight)
-        const data = await apiPost("login", { idToken });
-
-        state.token = data.token;
-        state.user = data.user || { email: data.email, role: data.role };
-
-        $("#userEmail").textContent = state.user.email || "-";
-        $("#userRole").textContent = (upper(state.user.role) === "ADMIN") ? "ADMIN" : "VIEWER";
-
-        show($("#btnLogout"));
-        hide($("#loginBox"));
-        show($("#app"));
-
-        if (upper(state.user.role) === "ADMIN") {
-          show($("#adminOnlyBadge"));
-          show($("#adminAddWaran"));
-          hide($("#viewerMsg"));
-        } else {
-          hide($("#adminOnlyBadge"));
-          hide($("#adminAddWaran"));
-          show($("#viewerMsg"));
-        }
-
-        await refreshAll(true);
-
-      } catch (e) {
-        $("#loginMsg").textContent = "Login gagal: " + (e.message || e);
-        show($("#loginMsg"));
+        afterLoginUI();
+        await refreshAll();
+      }catch(err){
+        console.error(err);
+        setMsg($("loginMsg"), "Login gagal: " + (err.message || err));
       }
     }
+  });
 
-    function logout(){
-      state.token = null;
-      state.user = null;
-      state.warans = [];
-      state.belanjas = [];
-      state.lastSync = null;
+  window.google.accounts.id.renderButton(
+    $("gsiBtn"),
+    { theme: "outline", size: "large", shape: "pill" }
+  );
+}
 
-      $("#userEmail").textContent = "—";
-      $("#userRole").textContent = "—";
-      hide($("#btnLogout"));
-      show($("#loginBox"));
-      hide($("#app"));
-      $("#waranList").innerHTML = "";
-      setSummaryUI({ totalPenerimaan:0, totalCommitted:0, totalDraft:0, totalAvailable:0 });
+function afterLoginUI(){
+  hide($("loginArea"));
+  show($("app"));
 
-      try { google.accounts.id.disableAutoSelect(); } catch {}
-    }
+  $("userEmail").textContent = state.email || "(unknown)";
+  $("userRole").textContent = state.role || "ADMIN";
+  $("userBadge").classList.remove("hidden");
+  $("userBadge").classList.add("flex");
 
-    // ===== LOAD + RENDER =====
-    async function refreshAll(silent=false){
-      try {
-        if (!silent) $("#btnRefresh").textContent = "Refreshing...";
-        const [w, b] = await Promise.all([
-          apiGet(CONFIG.ACTION_LIST_WARAN),
-          apiGet(CONFIG.ACTION_LIST_BELANJA)
-        ]);
+  // kalau nanti ada user viewer, kau boleh hide admin panel bila role bukan admin
+  if((state.role || "").toUpperCase() !== "ADMIN"){
+    hide($("adminPanel"));
+  }else{
+    show($("adminPanel"));
+  }
+}
 
-        state.warans = w.warans || w.data || w.rows || [];
-        state.belanjas = b.belanjas || b.data || b.rows || [];
+function doLogout(){
+  // clear state
+  state.loggedIn = false;
+  state.email = "";
+  state.role = "ADMIN";
+  state.sessionToken = "";
+  state.idToken = "";
+  state.warans = [];
+  state.belanjaByWaranId = {};
+  state.lastSync = null;
 
-        state.lastSync = new Date();
-        $("#lastSync").textContent = "Last sync: " + state.lastSync.toLocaleString("en-MY");
+  hide($("app"));
+  show($("loginArea"));
+  $("userBadge").classList.add("hidden");
+  $("userBadge").classList.remove("flex");
 
-        const sum = computeSummary(state.warans, state.belanjas);
-        setSummaryUI(sum);
+  // optional: disable auto-select account
+  try { window.google.accounts.id.disableAutoSelect(); } catch(e){}
+}
 
-        renderWaranList();
+/** =========================
+ *  LOAD + RENDER
+ *  ========================= */
+function computeBelanjaMap(belanjaList){
+  const map = {};
+  (belanjaList || []).forEach(b => {
+    const wid = b.WaranID || b.waranId || b.waranID || "";
+    if(!wid) return;
+    if(!map[wid]) map[wid] = [];
+    map[wid].push(b);
+  });
+  // sort belanja by date (desc) kalau ada
+  Object.keys(map).forEach(k => {
+    map[k].sort((a,b) => String(b.Tarikh||b.tarikh||"").localeCompare(String(a.Tarikh||a.tarikh||"")));
+  });
+  return map;
+}
 
-      } catch (e) {
-        alert("Refresh gagal: " + (e.message || e));
-      } finally {
-        $("#btnRefresh").textContent = "Refresh";
-      }
-    }
+function calcTotals(){
+  // total penerimaan = sum waran bukan CLOSED
+  const waransActive = state.warans.filter(w => (w.StatusWaran || w.statusWaran || "ACTIVE") !== "CLOSED");
+  const totalWaran = waransActive.reduce((s,w) => s + Number(w.JumlahWaran || w.jumlahWaran || w.Jumlah || 0), 0);
 
-    function renderWaranList(){
-      const q = upper($("#q").value || "");
-      const wrap = $("#waranList");
-      wrap.innerHTML = "";
+  // committed/draft = dari belanja ikut status
+  let committed = 0;
+  let draft = 0;
 
-      const waransSorted = [...state.warans].sort((a,b)=>{
-        const da = String(a.TarikhTerima || a.tarikhTerima || a.Tarikh || "");
-        const db = String(b.TarikhTerima || b.tarikhTerima || b.Tarikh || "");
-        return db.localeCompare(da);
-      });
-
-      const filtered = waransSorted.filter(w=>{
-        const no = upper(w.NoWaran || w.noWaran || "");
-        const perihal = upper(w.Perihal || w.perihal || "");
-        return !q || no.includes(q) || perihal.includes(q);
-      });
-
-      if (filtered.length === 0) {
-        wrap.innerHTML = `<div class="text-sm text-slate-600">Tiada waran (atau carian tak jumpa).</div>`;
-        return;
-      }
-
-      filtered.forEach(w=>{
-        const waranId = w.WaranID || w.waranId || w.id || "";
-        const noWaran = w.NoWaran || w.noWaran || "";
-        const tarikh = fmtDate(w.TarikhTerima || w.tarikhTerima || w.Tarikh || "");
-        const perihal = w.Perihal || w.perihal || "";
-
-        const belanjas = state.belanjas.filter(b => {
-          const bid = b.WaranID || b.waranId || b.waranID || "";
-          return String(bid) === String(waranId);
-        });
-
-        const jumlah = Number(w.JumlahWaran ?? w.jumlahWaran ?? w.Jumlah ?? 0);
-        const committed = belanjas
-          .filter(b => isCommittedStatus(b.StatusBelanja ?? b.statusBelanja ?? b.Status ?? b.status))
-          .reduce((sum, b) => sum + Number(b.Amaun ?? b.amaun ?? b.amount ?? 0), 0);
-
-        const draft = belanjas
-          .filter(b => isDraftStatus(b.StatusBelanja ?? b.statusBelanja ?? b.Status ?? b.status))
-          .reduce((sum, b) => sum + Number(b.Amaun ?? b.amaun ?? b.amount ?? 0), 0);
-
-        const available = jumlah - committed;
-        const p = percent(committed, jumlah);
-        const stateW = getWaranState({ ...w, Available: available });
-
-        const badge = stateW === "CLOSED"
-          ? `<span class="chip bg-rose-50 text-rose-700">CLOSED</span>`
-          : `<span class="chip bg-emerald-50 text-emerald-700">ACTIVE</span>`;
-
-        const isAdmin = upper(state.user?.role) === "ADMIN";
-
-        const belanjaRows = belanjas.length
-          ? belanjas.map(b=>{
-              const belanjaId = b.BelanjaID || b.belanjaId || b.id || "";
-              const bt = fmtDate(b.Tarikh || b.tarikh || "");
-              const bp = b.Perihal || b.perihal || "";
-              const bc = b.Catatan || b.catatan || "";
-              const amaun = Number(b.Amaun ?? b.amaun ?? 0);
-              const st = upper(b.StatusBelanja ?? b.statusBelanja ?? b.Status ?? b.status);
-              const doc = b.NoDokumen || b.noDokumen || "";
-              const payee = b.Payee || b.payee || "";
-              const stChip =
-                isCommittedStatus(st)
-                  ? `<span class="chip bg-emerald-50 text-emerald-700">${st}</span>`
-                  : (isDraftStatus(st)
-                      ? `<span class="chip bg-slate-50 text-slate-700">${st}</span>`
-                      : `<span class="chip bg-amber-50 text-amber-700">${st}</span>`);
-
-              return `
-                <tr class="border-t">
-                  <td class="py-3 pr-3 align-top">
-                    <div class="mono text-slate-900">${belanjaId}</div>
-                    <div class="text-xs text-slate-500 mt-1">${bt || "-"}</div>
-                  </td>
-                  <td class="py-3 pr-3 align-top">
-                    <div class="font-semibold text-slate-900">${bp || "-"}</div>
-                    <div class="text-xs text-slate-500 mt-1">${bc || ""}</div>
-                  </td>
-                  <td class="py-3 pr-3 align-top whitespace-nowrap">${fmtMoney(amaun)}</td>
-                  <td class="py-3 pr-3 align-top">${stChip}</td>
-                  <td class="py-3 pr-3 align-top">${doc || "-"}</td>
-                  <td class="py-3 align-top">${payee || "-"}</td>
-                </tr>
-              `;
-            }).join("")
-          : `<tr><td colspan="6" class="py-4 text-sm text-slate-500">Belum ada belanja untuk waran ni.</td></tr>`;
-
-        const addBelanjaForm = isAdmin ? `
-          <div class="mt-4 card p-4 bg-slate-50">
-            <div class="flex items-center justify-between">
-              <div class="font-semibold text-slate-900">Tambah Belanja (waran ini)</div>
-              <div class="text-xs text-slate-500">Committed: HANTAR PERMOHONAN / SELESAI</div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-3 mt-3">
-              <input data-bp="${waranId}" class="px-4 py-2 rounded-xl border bg-white md:col-span-2" placeholder="Perihal" />
-              <input data-ba="${waranId}" type="number" min="0" step="0.01" class="px-4 py-2 rounded-xl border bg-white" placeholder="Amaun" />
-              <select data-bs="${waranId}" class="px-4 py-2 rounded-xl border bg-white">
-                <option value="KERTAS KERJA">KERTAS KERJA</option>
-                <option value="HANTAR PERMOHONAN">HANTAR PERMOHONAN</option>
-                <option value="SELESAI">SELESAI</option>
-                <option value="BATAL">BATAL</option>
-              </select>
-              <input data-bd="${waranId}" class="px-4 py-2 rounded-xl border bg-white" placeholder="No Dokumen" />
-              <input data-by="${waranId}" class="px-4 py-2 rounded-xl border bg-white" placeholder="Payee" />
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-3 mt-3">
-              <input data-bt="${waranId}" type="date" class="px-4 py-2 rounded-xl border bg-white" />
-              <input data-bc="${waranId}" class="px-4 py-2 rounded-xl border bg-white md:col-span-5" placeholder="Catatan (optional)" />
-            </div>
-
-            <button data-addbelanja="${waranId}" class="mt-3 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">
-              Tambah Belanja
-            </button>
-            <div data-bmsg="${waranId}" class="mt-2 text-sm text-amber-700 hidden"></div>
-          </div>
-        ` : "";
-
-        wrap.insertAdjacentHTML("beforeend", `
-          <div class="card shadow-soft p-5 border-2 ${stateW === "CLOSED" ? "border-rose-200" : "border-blue-200"}">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <div class="font-extrabold text-slate-900">
-                  ${noWaran} <span class="text-slate-500 text-sm">(${waranId})</span>
-                </div>
-                <div class="text-sm text-slate-600 mt-1">
-                  <span class="mono">${tarikh || "-"}</span>
-                  <span class="mx-2 text-slate-300">•</span>
-                  <span class="font-semibold">${perihal || "-"}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">${badge}</div>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-              <div class="card p-3">
-                <div class="text-xs text-slate-500 font-semibold">Jumlah Waran</div>
-                <div class="text-lg font-extrabold text-slate-900 mt-1">${fmtMoney(jumlah)}</div>
-              </div>
-              <div class="card p-3">
-                <div class="text-xs text-slate-500 font-semibold">Committed</div>
-                <div class="text-lg font-extrabold text-slate-900 mt-1">${fmtMoney(committed)}</div>
-              </div>
-              <div class="card p-3">
-                <div class="text-xs text-slate-500 font-semibold">Draft</div>
-                <div class="text-lg font-extrabold text-slate-900 mt-1">${fmtMoney(draft)}</div>
-              </div>
-              <div class="card p-3">
-                <div class="text-xs text-slate-500 font-semibold">Available</div>
-                <div class="text-lg font-extrabold text-slate-900 mt-1">${fmtMoney(available)}</div>
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
-                <span>Utilization (Committed / Jumlah)</span>
-                <span class="font-semibold">${p}%</span>
-              </div>
-              <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div class="h-2 bg-blue-600" style="width:${p}%"></div>
-              </div>
-            </div>
-
-            <div class="mt-5">
-              <div class="flex items-center justify-between">
-                <div class="text-lg font-bold text-slate-900">Belanja</div>
-                <div class="text-xs text-slate-500">Committed: HANTAR PERMOHONAN / SELESAI</div>
-              </div>
-
-              <div class="mt-2 overflow-x-auto">
-                <table class="w-full table">
-                  <thead>
-                    <tr class="bg-slate-50">
-                      <th class="text-left py-3 pr-3">BelanjaID / Tarikh</th>
-                      <th class="text-left py-3 pr-3">Perihal / Catatan</th>
-                      <th class="text-left py-3 pr-3">Amaun</th>
-                      <th class="text-left py-3 pr-3">Status</th>
-                      <th class="text-left py-3 pr-3">No Dokumen</th>
-                      <th class="text-left py-3">Payee</th>
-                    </tr>
-                  </thead>
-                  <tbody>${belanjaRows}</tbody>
-                </table>
-              </div>
-
-              ${addBelanjaForm}
-            </div>
-          </div>
-        `);
-      });
-
-      wireActions();
-    }
-
-    function wireActions(){
-      document.querySelectorAll("[data-addbelanja]").forEach(btn=>{
-        btn.onclick = async () => {
-          if (upper(state.user?.role) !== "ADMIN") return;
-          const waranId = btn.getAttribute("data-addbelanja");
-
-          const perihal = document.querySelector(`[data-bp="${waranId}"]`)?.value?.trim();
-          const amaun = Number(document.querySelector(`[data-ba="${waranId}"]`)?.value || 0);
-          const status = document.querySelector(`[data-bs="${waranId}"]`)?.value;
-          const noDok = document.querySelector(`[data-bd="${waranId}"]`)?.value?.trim();
-          const payee = document.querySelector(`[data-by="${waranId}"]`)?.value?.trim();
-          const tarikh = document.querySelector(`[data-bt="${waranId}"]`)?.value;
-          const catatan = document.querySelector(`[data-bc="${waranId}"]`)?.value?.trim();
-          const msg = document.querySelector(`[data-bmsg="${waranId}"]`);
-
-          msg.textContent = "";
-          hide(msg);
-
-          if (!perihal) { msg.textContent = "Perihal wajib isi."; show(msg); return; }
-          if (!amaun || amaun <= 0) { msg.textContent = "Amaun mesti lebih 0."; show(msg); return; }
-          if (!tarikh) { msg.textContent = "Tarikh wajib isi."; show(msg); return; }
-
-          btn.disabled = true;
-          btn.textContent = "Saving...";
-
-          try {
-            await apiPost(CONFIG.ACTION_ADD_BELANJA, {
-              waranId,
-              perihal,
-              amaun,
-              statusBelanja: status,
-              tarikh,
-              noDokumen: noDok || "",
-              payee: payee || "",
-              catatan: catatan || ""
-            });
-
-            document.querySelector(`[data-bp="${waranId}"]`).value = "";
-            document.querySelector(`[data-ba="${waranId}"]`).value = "";
-            document.querySelector(`[data-bd="${waranId}"]`).value = "";
-            document.querySelector(`[data-by="${waranId}"]`).value = "";
-            document.querySelector(`[data-bc="${waranId}"]`).value = "";
-
-            await refreshAll(true);
-
-          } catch (e) {
-            msg.textContent = "Gagal tambah belanja: " + (e.message || e);
-            show(msg);
-          } finally {
-            btn.disabled = false;
-            btn.textContent = "Tambah Belanja";
-          }
-        };
-      });
-    }
-
-    async function addWaran(){
-      const msg = $("#addWaranMsg");
-      msg.textContent = "";
-      hide(msg);
-
-      const noWaran = $("#w_no").value.trim();
-      const tarikh = $("#w_tarikh").value;
-      const perihal = $("#w_perihal").value.trim();
-      const jumlah = Number($("#w_jumlah").value || 0);
-      const statusWaran = $("#w_status").value;
-
-      if (!noWaran) { msg.textContent = "No Waran wajib isi."; show(msg); return; }
-      if (!tarikh) { msg.textContent = "Tarikh wajib isi."; show(msg); return; }
-      if (!perihal) { msg.textContent = "Perihal wajib isi."; show(msg); return; }
-      if (!jumlah || jumlah <= 0) { msg.textContent = "Jumlah mesti lebih 0."; show(msg); return; }
-
-      $("#btnAddWaran").disabled = true;
-      $("#btnAddWaran").textContent = "Saving...";
-
-      try {
-        await apiPost(CONFIG.ACTION_ADD_WARAN, {
-          noWaran,
-          tarikhTerima: tarikh,
-          perihal,
-          jumlahWaran: jumlah,
-          statusWaran
-        });
-
-        $("#w_no").value = "";
-        $("#w_tarikh").value = "";
-        $("#w_perihal").value = "";
-        $("#w_jumlah").value = "";
-        $("#w_status").value = "ACTIVE";
-
-        await refreshAll(true);
-      } catch (e) {
-        msg.textContent = "Gagal tambah waran: " + (e.message || e);
-        show(msg);
-      } finally {
-        $("#btnAddWaran").disabled = false;
-        $("#btnAddWaran").textContent = "Tambah Waran";
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      $("#btnLogout").addEventListener("click", logout);
-      $("#btnRefresh").addEventListener("click", () => refreshAll(false));
-      $("#btnAddWaran").addEventListener("click", addWaran);
-      $("#q").addEventListener("input", renderWaranList);
-
-      const t = setInterval(() => {
-        if (window.google && google.accounts && google.accounts.id) {
-          clearInterval(t);
-          initGoogleButton();
-        }
-      }, 200);
+  Object.entries(state.belanjaByWaranId).forEach(([wid, list]) => {
+    (list || []).forEach(b => {
+      const amt = Number(b.Amaun || b.amaun || 0);
+      const st = String(b.StatusBelanja || b.statusBelanja || "").toUpperCase();
+      if(STATUS.COMMITTED.includes(st)) committed += amt;
+      if(STATUS.DRAFT.includes(st)) draft += amt;
     });
-  </script>
+  });
+
+  const available = totalWaran - committed;
+
+  $("sumTotalWaran").textContent = money(totalWaran);
+  $("sumCommitted").textContent = money(committed);
+  $("sumDraft").textContent = money(draft);
+  $("sumAvailable").textContent = money(available);
+}
+
+function waranCard(w){
+  const waranId = w.WaranID || w.waranId || "";
+  const noWaran = w.NoWaran || w.noWaran || "-";
+  const perihal = w.Perihal || w.perihal || "-";
+  const tarikh = w.TarikhTerima || w.tarikhTerima || "";
+  const jumlah = Number(w.JumlahWaran || w.jumlahWaran || w.Jumlah || 0);
+  const statusWaran = String(w.StatusWaran || w.statusWaran || "ACTIVE").toUpperCase();
+
+  const belanjaList = state.belanjaByWaranId[waranId] || [];
+
+  const committed = belanjaList.reduce((s,b) => {
+    const st = String(b.StatusBelanja || b.statusBelanja || "").toUpperCase();
+    const amt = Number(b.Amaun || b.amaun || 0);
+    return s + (STATUS.COMMITTED.includes(st) ? amt : 0);
+  }, 0);
+
+  const draft = belanjaList.reduce((s,b) => {
+    const st = String(b.StatusBelanja || b.statusBelanja || "").toUpperCase();
+    const amt = Number(b.Amaun || b.amaun || 0);
+    return s + (STATUS.DRAFT.includes(st) ? amt : 0);
+  }, 0);
+
+  const available = jumlah - committed;
+
+  const utilPct = jumlah > 0 ? Math.round((committed / jumlah) * 100) : 0;
+
+  const badge = statusWaran === "CLOSED"
+    ? `<span class="text-xs px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100 font-semibold">CLOSED</span>`
+    : `<span class="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-semibold">ACTIVE</span>`;
+
+  const belanjaRows = belanjaList.length
+    ? belanjaList.map(b => {
+        const bid = b.BelanjaID || b.belanjaId || "-";
+        const bTarikh = fmtDate(b.Tarikh || b.tarikh || "");
+        const bPerihal = b.Perihal || b.perihal || "";
+        const bCatatan = b.Catatan || b.catatan || "";
+        const bAmaun = Number(b.Amaun || b.amaun || 0);
+        const bStatus = String(b.StatusBelanja || b.statusBelanja || "").toUpperCase();
+        const bNoDok = b.NoDokumen || b.noDokumen || "";
+        const bPayee = b.Payee || b.payee || "";
+
+        const pill = STATUS.COMMITTED.includes(bStatus)
+          ? `bg-emerald-50 text-emerald-700 border-emerald-100`
+          : (bStatus === "KERTAS KERJA" ? `bg-slate-50 text-slate-700 border-slate-100` : `bg-amber-50 text-amber-800 border-amber-100`);
+
+        return `
+          <tr class="border-t">
+            <td class="py-2 pr-2">
+              <div class="mono text-sm">${bid}</div>
+              <div class="text-xs text-slate-500">${bTarikh || "-"}</div>
+            </td>
+            <td class="py-2 pr-2">
+              <div class="font-semibold">${escapeHtml(bPerihal)}</div>
+              ${bCatatan ? `<div class="text-xs text-slate-500">${escapeHtml(bCatatan)}</div>` : ``}
+            </td>
+            <td class="py-2 pr-2 font-semibold">${money(bAmaun)}</td>
+            <td class="py-2 pr-2">
+              <span class="text-xs px-2 py-1 rounded-full border ${pill} font-semibold">${escapeHtml(bStatus || "-")}</span>
+            </td>
+            <td class="py-2 pr-2">${escapeHtml(bNoDok || "-")}</td>
+            <td class="py-2">${escapeHtml(bPayee || "-")}</td>
+          </tr>
+        `;
+      }).join("")
+    : `
+      <tr class="border-t">
+        <td class="py-3 text-slate-500" colspan="6">Belum ada belanja untuk waran ni.</td>
+      </tr>
+    `;
+
+  // form id unik per waran
+  const widSafe = waranId.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  return `
+  <div class="border rounded-2xl p-5 bg-white shadow-sm" data-waran-card="${escapeHtml(waranId)}">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="text-xl font-extrabold">${escapeHtml(noWaran)} <span class="text-slate-400 font-semibold text-sm">(${escapeHtml(waranId)})</span></div>
+        <div class="text-sm text-slate-600 mt-1">
+          ${escapeHtml(tarikh)} &nbsp; · &nbsp; <span class="font-semibold">${escapeHtml(perihal)}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">${badge}</div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
+      <div class="rounded-2xl border p-4">
+        <div class="text-xs text-slate-500 font-semibold">Jumlah Waran</div>
+        <div class="text-xl font-extrabold mt-1">${money(jumlah)}</div>
+      </div>
+      <div class="rounded-2xl border p-4">
+        <div class="text-xs text-slate-500 font-semibold">Committed</div>
+        <div class="text-xl font-extrabold mt-1">${money(committed)}</div>
+      </div>
+      <div class="rounded-2xl border p-4">
+        <div class="text-xs text-slate-500 font-semibold">Draft</div>
+        <div class="text-xl font-extrabold mt-1">${money(draft)}</div>
+      </div>
+      <div class="rounded-2xl border p-4">
+        <div class="text-xs text-slate-500 font-semibold">Available</div>
+        <div class="text-xl font-extrabold mt-1">${money(available)}</div>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <div>Utilization (Committed / Jumlah)</div>
+        <div>${utilPct}%</div>
+      </div>
+      <div class="h-2 rounded-full bg-slate-100 mt-2 overflow-hidden">
+        <div class="h-full bg-blue-600" style="width:${Math.min(100, Math.max(0, utilPct))}%"></div>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <div class="flex items-end justify-between gap-4">
+        <h3 class="text-lg font-bold">Belanja</h3>
+        <div class="text-xs text-slate-500">Committed: HANTAR PERMOHONAN / SELESAI</div>
+      </div>
+
+      <div class="mt-3 overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="bg-slate-50 text-slate-700">
+              <th class="text-left py-2 px-2 w-44">BelanjaID / Tarikh</th>
+              <th class="text-left py-2 px-2">Perihal / Catatan</th>
+              <th class="text-left py-2 px-2 w-28">Amaun</th>
+              <th class="text-left py-2 px-2 w-40">Status</th>
+              <th class="text-left py-2 px-2 w-40">No Dokumen</th>
+              <th class="text-left py-2 px-2 w-56">Payee</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${belanjaRows}
+          </tbody>
+        </table>
+      </div>
+
+      ${ (state.role || "").toUpperCase() === "ADMIN" ? `
+      <div class="mt-6 border rounded-2xl p-4 bg-slate-50">
+        <div class="flex items-center justify-between">
+          <h4 class="font-bold">Tambah Belanja (waran ini)</h4>
+          <div class="text-xs text-slate-500">Committed: HANTAR PERMOHONAN / SELESAI</div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4">
+          <input id="bPerihal_${widSafe}" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Perihal" />
+          <input id="bAmaun_${widSafe}" type="number" class="border rounded-xl px-3 py-2" placeholder="Amaun" />
+          <select id="bStatus_${widSafe}" class="border rounded-xl px-3 py-2">
+            <option value="KERTAS KERJA">KERTAS KERJA</option>
+            <option value="HANTAR PERMOHONAN">HANTAR PERMOHONAN</option>
+            <option value="SELESAI">SELESAI</option>
+            <option value="BATAL">BATAL</option>
+          </select>
+          <input id="bNoDok_${widSafe}" class="border rounded-xl px-3 py-2" placeholder="No Dokumen" />
+          <input id="bPayee_${widSafe}" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Payee" />
+          <input id="bTarikh_${widSafe}" type="date" class="border rounded-xl px-3 py-2" />
+          <input id="bCatatan_${widSafe}" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Catatan (optional)" />
+        </div>
+
+        <div class="flex items-center justify-between mt-4">
+          <div class="text-xs text-slate-500">WaranID: <span class="mono">${escapeHtml(waranId)}</span></div>
+          <button data-add-belanja="${escapeHtml(waranId)}"
+                  class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">
+            Tambah Belanja
+          </button>
+        </div>
+
+        <div id="bMsg_${widSafe}" class="mt-3 text-sm text-rose-600 hidden"></div>
+      </div>
+      ` : `` }
+    </div>
+  </div>
+  `;
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function renderWaran(){
+  const q = ($("inSearch").value || "").toLowerCase().trim();
+
+  const warans = (state.warans || [])
+    .slice()
+    .sort((a,b) => String(b.TarikhTerima||"").localeCompare(String(a.TarikhTerima||"")));
+
+  const filtered = !q ? warans : warans.filter(w => {
+    const no = String(w.NoWaran || "").toLowerCase();
+    const p  = String(w.Perihal || "").toLowerCase();
+    const id = String(w.WaranID || "").toLowerCase();
+    return no.includes(q) || p.includes(q) || id.includes(q);
+  });
+
+  $("waranWrap").innerHTML = filtered.map(waranCard).join("");
+
+  // bind add belanja buttons (setiap card)
+  document.querySelectorAll("[data-add-belanja]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const waranId = btn.getAttribute("data-add-belanja");
+      await handleAddBelanja(waranId);
+    });
+  });
+}
+
+/** =========================
+ *  ACTIONS
+ *  ========================= */
+async function refreshAll(){
+  try{
+    $("btnRefresh").disabled = true;
+
+    // 1) list waran
+    const wOut = await apiGet({ action:"listWaran", ...authPayload() });
+    if(!wOut?.ok) throw new Error(wOut?.error || "Gagal load waran");
+    state.warans = wOut.data || wOut.warans || [];
+
+    // 2) list belanja
+    const bOut = await apiGet({ action:"listBelanja", ...authPayload() });
+    if(!bOut?.ok) throw new Error(bOut?.error || "Gagal load belanja");
+    const belanjaList = bOut.data || bOut.belanja || [];
+
+    // 3) build map (INI FIX UTAMA)
+    state.belanjaByWaranId = computeBelanjaMap(belanjaList);
+
+    state.lastSync = new Date();
+    $("lastSync").textContent = state.lastSync.toLocaleString("ms-MY");
+
+    // render
+    calcTotals();
+    renderWaran();
+  }catch(err){
+    console.error(err);
+    // show at adminMsg kalau ada
+    setMsg($("adminMsg"), err.message || String(err));
+    setTimeout(()=> setMsg($("adminMsg"), ""), 5000);
+  }finally{
+    $("btnRefresh").disabled = false;
+  }
+}
+
+async function handleAddWaran(){
+  try{
+    setMsg($("adminMsg"), "");
+    const noWaran = ($("inNoWaran").value || "").trim();
+    const tarikh  = ($("inTarikhTerima").value || "").trim();
+    const perihal = ($("inPerihalWaran").value || "").trim();
+    const jumlah  = Number(($("inJumlahWaran").value || "0").trim());
+    const status  = ($("inStatusWaran").value || "ACTIVE").trim();
+
+    if(!noWaran) throw new Error("No Waran wajib isi");
+    if(!tarikh) throw new Error("Tarikh Terima wajib isi");
+    if(!perihal) throw new Error("Perihal wajib isi");
+    if(!jumlah || jumlah <= 0) throw new Error("Jumlah mesti > 0");
+
+    const out = await apiPost({
+      action: "createWaran",
+      ...authPayload(),
+      body: { noWaran, tarikhTerima: tarikh, perihal, jumlahWaran: jumlah, statusWaran: status }
+    });
+    if(!out?.ok) throw new Error(out?.error || "Gagal tambah waran");
+
+    // clear form
+    $("inNoWaran").value = "";
+    $("inTarikhTerima").value = "";
+    $("inPerihalWaran").value = "";
+    $("inJumlahWaran").value = "";
+
+    await refreshAll();
+  }catch(err){
+    console.error(err);
+    setMsg($("adminMsg"), err.message || String(err));
+  }
+}
+
+async function handleAddBelanja(waranId){
+  const widSafe = waranId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const msgEl = $("bMsg_" + widSafe);
+  try{
+    setMsg(msgEl, "");
+
+    const perihal = ($("bPerihal_" + widSafe).value || "").trim();
+    const amaun   = Number(($("bAmaun_" + widSafe).value || "0").trim());
+    const status  = ($("bStatus_" + widSafe).value || "").trim();
+    const noDok   = ($("bNoDok_" + widSafe).value || "").trim();
+    const payee   = ($("bPayee_" + widSafe).value || "").trim();
+    const tarikh  = ($("bTarikh_" + widSafe).value || "").trim();
+    const catatan = ($("bCatatan_" + widSafe).value || "").trim();
+
+    if(!perihal) throw new Error("Perihal belanja wajib isi");
+    if(!amaun || amaun <= 0) throw new Error("Amaun mesti > 0");
+    if(!tarikh) throw new Error("Tarikh belanja wajib isi");
+
+    const out = await apiPost({
+      action: "createBelanja",
+      ...authPayload(),
+      body: { waranId, perihal, amaun, statusBelanja: status, noDokumen: noDok, payee, tarikh, catatan }
+    });
+    if(!out?.ok) throw new Error(out?.error || "Gagal tambah belanja");
+
+    // clear inputs for that card
+    $("bPerihal_" + widSafe).value = "";
+    $("bAmaun_" + widSafe).value = "";
+    $("bNoDok_" + widSafe).value = "";
+    $("bPayee_" + widSafe).value = "";
+    $("bTarikh_" + widSafe).value = "";
+    $("bCatatan_" + widSafe).value = "";
+    $("bStatus_" + widSafe).value = "KERTAS KERJA";
+
+    // QUICK local update (supaya tak “kosong” card lain)
+    // kalau backend return created row:
+    const created = out.data || out.created || null;
+    if(created){
+      if(!state.belanjaByWaranId[waranId]) state.belanjaByWaranId[waranId] = [];
+      state.belanjaByWaranId[waranId].unshift(created);
+      calcTotals();
+      renderWaran();
+      state.lastSync = new Date();
+      $("lastSync").textContent = state.lastSync.toLocaleString("ms-MY");
+    }else{
+      // fallback refresh full
+      await refreshAll();
+    }
+  }catch(err){
+    console.error(err);
+    setMsg(msgEl, err.message || String(err));
+  }
+}
+
+/** =========================
+ *  EVENTS
+ *  ========================= */
+$("btnLogout").addEventListener("click", doLogout);
+$("btnRefresh").addEventListener("click", refreshAll);
+$("btnAddWaran").addEventListener("click", handleAddWaran);
+$("inSearch").addEventListener("input", renderWaran);
+
+/** =========================
+ *  INIT
+ *  ========================= */
+window.addEventListener("load", () => {
+  initGoogle();
+});
+</script>
 </body>
 </html>
