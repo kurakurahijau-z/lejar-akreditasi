@@ -30,12 +30,40 @@
     @media (max-width: 640px){
       .modalCard{ margin:3.5rem 1rem 0; }
     }
+
+    /* ===== PRINT FOOTER ===== */
+    .printFooter{
+      display:none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px 16px;
+      font-size: 11px;
+      color: #64748b;
+      border-top: 1px solid rgba(15,23,42,.12);
+      background: #fff;
+      text-align: center;
+      z-index: 9999;
+    }
+
+    @media print{
+      body{ background:#fff !important; }
+      .printHide{ display:none !important; }
+      .card{ box-shadow:none !important; }
+      .printFooter{ display:block !important; }
+      /* bagi ruang bawah supaya content tak bertindih footer */
+      .printPadBottom{ padding-bottom: 52px !important; }
+    }
   </style>
 </head>
 
 <body class="min-h-screen">
-  <div class="max-w-6xl mx-auto px-4 py-10">
-    <div class="card p-7">
+  <!-- Footer untuk print -->
+  <div class="printFooter" id="printFooterText">© 2026 kurakurahijau.com | Lejar Akreditasi</div>
+
+  <div class="max-w-6xl mx-auto px-4 py-10 printPadBottom">
+    <div class="card p-7 printHide">
       <div class="flex items-start justify-between gap-4">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
@@ -48,7 +76,7 @@
     </div>
 
     <!-- Auth -->
-    <div id="authCard" class="card p-7 mt-6">
+    <div id="authCard" class="card p-7 mt-6 printHide">
       <h2 class="text-xl font-bold text-slate-900">Sila login</h2>
       <p class="muted mt-1">Whitelist sahaja boleh masuk. (JSONP — confirm tak kena CORS)</p>
 
@@ -61,7 +89,7 @@
     <!-- App -->
     <div id="app" class="hidden">
       <!-- Controls -->
-      <div class="card p-6 mt-6">
+      <div class="card p-6 mt-6 printHide">
         <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
           <div class="flex flex-col md:flex-row gap-3 md:items-center">
             <select id="yearFilter" class="input md:w-44"></select>
@@ -104,7 +132,7 @@
       </div>
 
       <!-- Add waran (admin only) -->
-      <div id="adminAddWaran" class="card p-6 mt-6 hidden">
+      <div id="adminAddWaran" class="card p-6 mt-6 hidden printHide">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-xl font-bold text-slate-900">Tambah Waran</h2>
@@ -148,7 +176,7 @@
   </div>
 
   <!-- ===== Edit Belanja Modal ===== -->
-  <div id="editModal" class="modalWrap">
+  <div id="editModal" class="modalWrap printHide">
     <div class="modalBackdrop"></div>
 
     <div class="modalCard card p-6">
@@ -215,9 +243,14 @@
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
-
-  // ✅ URL Apps Script terkini
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
+
+  // ================== PRINT FOOTER YEAR ==================
+  (function setPrintFooter(){
+    const y = new Date().getFullYear();
+    const f = document.getElementById("printFooterText");
+    if (f) f.textContent = `© ${y} kurakurahijau.com | Lejar Akreditasi`;
+  })();
 
   // ================== STATE ==================
   const state = {
@@ -309,8 +342,6 @@
     return null;
   }
 
-  // Compute available from current UI data (match backend: available = jumlahWaran - sum(committed))
-  // Optionally exclude a belanjaId from committed sum (for edit scenario)
   function computeAvailableFromState(waranId, excludeBelanjaId){
     const w = (state.data?.waran || []).find(x=>x.waranId===waranId);
     if(!w) return 0;
@@ -369,7 +400,6 @@
     editing = { belanjaId:"", waranId:"", noWaran:"", waranStatus:"", originalStatus:"", originalAmaun:0 };
   }
 
-  // Close modal actions
   el("btnCloseEdit").onclick = closeEditModal;
   el("btnCancelEdit").onclick = closeEditModal;
   el("editModal").addEventListener("click",(e)=>{
@@ -391,7 +421,6 @@
 
     renderYearFilter(data.waran || []);
 
-    // admin section
     const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
     el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
@@ -404,9 +433,10 @@
       const belanjaRows = (w.belanja||[]).map(b=>{
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
         const select = `
-          <select class="input" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
+          <select class="input printHide" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
+          <div class="mini md:hidden">${esc(b.statusBelanja||"")}</div>
         `;
         return `
           <tr class="border-b">
@@ -420,7 +450,7 @@
             </td>
             <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
             <td class="py-3 pr-3 align-top">${select}</td>
-            <td class="py-3 pr-3 align-top whitespace-nowrap">
+            <td class="py-3 pr-3 align-top whitespace-nowrap printHide">
               <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
               <button class="btn btn-outline ml-2" data-edit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
             </td>
@@ -437,7 +467,7 @@
               <div class="text-lg font-extrabold">${esc(w.noWaran)} <span class="muted text-sm">(${esc(w.waranId)})</span></div>
               <div class="muted text-sm">${esc(w.tarikhTerima)} · <span class="font-semibold text-slate-900">${esc(w.perihal)}</span></div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 printHide">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
             </div>
@@ -468,8 +498,8 @@
                       <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Status (edit)</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Tindakan</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Status</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted printHide">Tindakan</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
                     </tr>
@@ -480,7 +510,7 @@
             ` : `<div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>`}
           </div>
 
-          <div class="mt-6 ${closed ? 'disabledWrap' : ''}">
+          <div class="mt-6 ${closed ? 'disabledWrap' : ''} printHide">
             <div class="card p-5">
               <div class="flex items-start justify-between gap-3">
                 <div>
@@ -524,14 +554,12 @@
   }
 
   function bindDynamicActions(){
-    // Update status belanja (dropdown + Update)
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
         const sel = document.querySelector(`select[data-belanja="${CSS.escape(belanjaId)}"]`);
         const statusBelanja = sel ? sel.value : "";
 
-        // front-end budget guard if changing to committed
         try{
           const found = findBelanjaById(belanjaId);
           if(found){
@@ -542,11 +570,10 @@
             const toCommitted = isCommittedStatus(statusBelanja);
 
             if(!fromCommitted && toCommitted){
-              const avail = computeAvailableFromState(w.waranId); // before committing this item (it was non-committed)
+              const avail = computeAvailableFromState(w.waranId);
               const amaun = num(b.amaun);
               if (amaun > avail){
                 alert(`Tak boleh set ke COMMITTED. Amaun melebihi baki.\nBaki: ${money(avail)}\nAmaun: ${money(amaun)}`);
-                // reset select back
                 sel.value = b.statusBelanja;
                 return;
               }
@@ -561,7 +588,6 @@
       };
     });
 
-    // Open edit modal
     document.querySelectorAll("[data-edit]").forEach(btn=>{
       btn.onclick = ()=>{
         const belanjaId = btn.getAttribute("data-edit");
@@ -574,7 +600,6 @@
       };
     });
 
-    // Add belanja
     document.querySelectorAll("[data-add]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-add");
@@ -602,7 +627,6 @@
           return;
         }
 
-        // front-end budget guard if committed
         if(isCommittedStatus(statusBelanja)){
           const avail = computeAvailableFromState(waranId);
           const amaun = num(amaunRaw);
@@ -632,7 +656,6 @@
       };
     });
 
-    // Export PDF
     document.querySelectorAll("[data-pdf]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
@@ -646,7 +669,6 @@
     });
   }
 
-  // Save edit modal
   el("btnSaveEdit").onclick = async ()=>{
     if(!editing.belanjaId){
       alert("Tiada item untuk edit.");
@@ -670,10 +692,9 @@
       return;
     }
 
-    // front-end budget guard if status will be committed
     const newAmaun = num(amaunRaw);
     if(isCommittedStatus(statusBelanja)){
-      const avail = computeAvailableFromState(editing.waranId, editing.belanjaId); // exclude current item
+      const avail = computeAvailableFromState(editing.waranId, editing.belanjaId);
       if(newAmaun > avail){
         el("editMsg").textContent = `Amaun melebihi baki. Baki: ${money(avail)}.`;
         return;
@@ -709,7 +730,6 @@
     render();
   }
 
-  // ================== Google Login ==================
   function initGoogle(){
     google.accounts.id.initialize({
       client_id: CLIENT_ID,
@@ -748,7 +768,6 @@
     el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
     el("yearFilter").addEventListener("change", refresh);
 
-    // admin add waran
     el("btnAddWaran").onclick = async ()=>{
       const noWaran = el("w_noWaran").value.trim();
       const tarikhTerima = el("w_tarikh").value;
@@ -778,7 +797,6 @@
       }
     };
 
-    // auto-login
     if(state.token){
       try{
         const me = await api("me", { token: state.token });
