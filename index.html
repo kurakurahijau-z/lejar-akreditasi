@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Lejar Akreditasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
@@ -15,44 +17,13 @@
     .btn-primary{ background:#2563eb; color:#fff; }
     .btn-dark{ background:#0f172a; color:#fff; }
     .btn-outline{ border:1px solid rgba(15,23,42,.14); background:#fff; color:#0f172a; }
-    .btn-danger{ background:#dc2626; color:#fff; }
-    .btn-ghost{ background:transparent; border:1px solid rgba(15,23,42,.14); color:#0f172a; }
+    .btn-danger{ background:#ef4444; color:#fff; }
     .input{ border:1px solid rgba(15,23,42,.12); border-radius:12px; padding:10px 12px; width:100%; }
     .muted{ color:#64748b; }
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
-    .kbd { font-size: 12px; border:1px solid rgba(15,23,42,.14); padding:2px 8px; border-radius:999px; background:#fff; }
-    .toast{
-      position: fixed; right: 16px; bottom: 16px; z-index: 60;
-      background:#0f172a; color:#fff; padding: 10px 12px; border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(2,6,23,.25);
-      max-width: 360px;
-    }
-    .toast.hidden{ display:none; }
-    /* Modal */
-    .modalWrap{
-      position: fixed; inset:0; z-index: 70;
-      background: rgba(2,6,23,.45);
-      display:flex; align-items:center; justify-content:center;
-      padding: 16px;
-    }
-    .modalWrap.hidden{ display:none; }
-    .modal{
-      width: 100%; max-width: 520px;
-      border-radius: 18px; background:#fff;
-      box-shadow: 0 20px 60px rgba(2,6,23,.25);
-      border:1px solid rgba(15,23,42,.10);
-      overflow:hidden;
-    }
-    .modalHdr{ padding: 18px 18px 10px; }
-    .modalBody{ padding: 0 18px 18px; }
-    .modalFtr{ padding: 12px 18px 18px; display:flex; gap:10px; justify-content:flex-end; }
-    .dangerBox{
-      border:1px solid rgba(220,38,38,.25);
-      background: rgba(220,38,38,.06);
-      border-radius: 14px;
-      padding: 12px;
-    }
+    .chip{ border:1px solid rgba(15,23,42,.12); border-radius:999px; padding:6px 10px; font-size:12px; }
+    .table th{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#64748b; }
   </style>
 </head>
 
@@ -65,12 +36,6 @@
           <p class="muted mt-2">
             Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.
           </p>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <span class="kbd">Search</span>
-            <span class="kbd">Filter Tahun</span>
-            <span class="kbd">Export PDF</span>
-            <span class="kbd">Soft Delete</span>
-          </div>
         </div>
         <div id="userBox" class="text-right"></div>
       </div>
@@ -176,34 +141,6 @@
     </div>
   </div>
 
-  <!-- Toast -->
-  <div id="toast" class="toast hidden"></div>
-
-  <!-- Confirm Modal -->
-  <div id="confirmModalWrap" class="modalWrap hidden" role="dialog" aria-modal="true">
-    <div class="modal">
-      <div class="modalHdr">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div id="cmTitle" class="text-xl font-extrabold text-slate-900">Confirm</div>
-            <div id="cmSubtitle" class="muted text-sm mt-1">...</div>
-          </div>
-          <button class="btn btn-ghost" id="cmX">Tutup</button>
-        </div>
-      </div>
-      <div class="modalBody">
-        <div class="dangerBox">
-          <div id="cmDesc" class="text-sm text-slate-900"></div>
-          <div class="mini mt-2">Ini soft delete — data masih ada dalam Google Sheet (status jadi <b>DELETED</b>).</div>
-        </div>
-      </div>
-      <div class="modalFtr">
-        <button class="btn btn-outline" id="cmCancel">Batal</button>
-        <button class="btn btn-danger" id="cmOk">Ya, Delete</button>
-      </div>
-    </div>
-  </div>
-
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
@@ -214,7 +151,7 @@
     token: localStorage.getItem("LA_TOKEN") || "",
     profile: null,
     data: null,
-    confirm: { action: null, payload: null, onDone: null }
+    editRow: null // belanjaId yang tengah edit (1 at a time)
   };
 
   // ================== JSONP helper ==================
@@ -246,21 +183,11 @@
   const el = (id)=>document.getElementById(id);
   const money = (n)=>"RM " + (Number(n||0)).toLocaleString("en-MY", {minimumFractionDigits:0, maximumFractionDigits:0});
   const esc = (s)=>String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
-
   function setAuthError(msg){ el("authErr").textContent = msg || ""; }
-
-  function toast(msg, ms=2200){
-    const t = el("toast");
-    t.textContent = msg || "";
-    t.classList.remove("hidden");
-    clearTimeout(toast._to);
-    toast._to = setTimeout(()=>t.classList.add("hidden"), ms);
-  }
 
   function renderUserBox(){
     const box = el("userBox");
     if (!state.profile){ box.innerHTML = ""; return; }
-
     box.innerHTML = `
       <div class="text-sm muted">${esc(state.profile.email)}</div>
       <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
@@ -277,49 +204,10 @@
 
   function renderYearFilter(waran){
     const years = new Set();
-    (waran||[]).forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
+    waran.forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
     const list = ["", ...Array.from(years).sort().reverse()];
     el("yearFilter").innerHTML = list.map(y=>`<option value="${esc(y)}">${y?esc(y):"Semua tahun"}</option>`).join("");
   }
-
-  // ================== Confirm Modal ==================
-  function openConfirm({title, subtitle, desc, action, payload, onDone}){
-    el("cmTitle").textContent = title || "Confirm";
-    el("cmSubtitle").textContent = subtitle || "";
-    el("cmDesc").innerHTML = desc || "";
-    state.confirm = { action, payload, onDone };
-    el("confirmModalWrap").classList.remove("hidden");
-  }
-  function closeConfirm(){
-    el("confirmModalWrap").classList.add("hidden");
-    state.confirm = { action:null, payload:null, onDone:null };
-  }
-  el("cmX").onclick = closeConfirm;
-  el("cmCancel").onclick = closeConfirm;
-  el("confirmModalWrap").addEventListener("click",(ev)=>{
-    if (ev.target === el("confirmModalWrap")) closeConfirm();
-  });
-  document.addEventListener("keydown",(ev)=>{
-    if(ev.key==="Escape" && !el("confirmModalWrap").classList.contains("hidden")) closeConfirm();
-  });
-
-  el("cmOk").onclick = async ()=>{
-    const c = state.confirm;
-    if(!c.action) return closeConfirm();
-    try{
-      el("cmOk").disabled = true;
-      el("cmOk").textContent = "Deleting...";
-      await api(c.action, c.payload);
-      toast("Deleted (soft) ✅");
-      closeConfirm();
-      if (typeof c.onDone === "function") await c.onDone();
-    }catch(e){
-      alert("Gagal delete: " + (e.error || JSON.stringify(e)));
-    }finally{
-      el("cmOk").disabled = false;
-      el("cmOk").textContent = "Ya, Delete";
-    }
-  };
 
   // ================== Render main ==================
   function render(){
@@ -336,47 +224,88 @@
 
     renderYearFilter(data.waran || []);
 
+    // admin section
     const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
     el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
     el("waranList").innerHTML = (data.waran||[]).map(w=>{
       const closed = String(w.statusWaran||"").toUpperCase()==="CLOSED";
-
       const statusPill = closed
         ? `<span class="pill bg-slate-100 text-slate-700 font-bold">CLOSED</span>`
         : `<span class="pill bg-emerald-50 text-emerald-700 font-bold">ACTIVE</span>`;
 
-      const topActions = `
-        <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
-        ${isAdmin ? `<button class="btn btn-danger" data-del-waran="${esc(w.waranId)}" ${closed?'disabled':''} title="Soft delete waran">Delete</button>` : ``}
-      `;
+      const delWaranBtn = isAdmin
+        ? `<button class="btn btn-danger" data-del-waran="${esc(w.waranId)}">Delete</button>`
+        : ``;
 
       const belanjaRows = (w.belanja||[]).map(b=>{
+        const isEditing = (state.editRow === b.belanjaId);
+
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
-        const select = `
-          <select class="input" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
+        const statusSelectView = `
+          <select class="input" data-belanja-status="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
         `;
 
+        const statusSelectEdit = `
+          <select class="input" data-edit-status="${esc(b.belanjaId)}">
+            ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
+          </select>
+        `;
+
+        const viewCells = `
+          <td class="py-3 pr-3 align-top text-sm">
+            <div class="font-bold">${esc(b.belanjaId)}</div>
+            <div class="muted text-xs">${esc(b.tarikh||"")}</div>
+          </td>
+          <td class="py-3 pr-3 align-top text-sm">
+            <div class="font-semibold">${esc(b.perihal||"")}</div>
+            <div class="muted text-xs">${esc(b.catatan||"")}</div>
+          </td>
+          <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
+          <td class="py-3 pr-3 align-top">${statusSelectView}</td>
+          <td class="py-3 pr-3 align-top">
+            <div class="flex gap-2">
+              <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
+              <button class="btn btn-outline" data-edit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
+              <button class="btn btn-danger" data-del="${esc(b.belanjaId)}" ${closed?'disabled':''}>Delete</button>
+            </div>
+          </td>
+          <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
+          <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
+        `;
+
+        const editCells = `
+          <td class="py-3 pr-3 align-top text-sm">
+            <div class="font-bold">${esc(b.belanjaId)}</div>
+            <input type="date" class="input mt-2" value="${esc(b.tarikh||"")}" data-edit-tarikh="${esc(b.belanjaId)}">
+          </td>
+          <td class="py-3 pr-3 align-top text-sm">
+            <input class="input" value="${esc(b.perihal||"")}" data-edit-perihal="${esc(b.belanjaId)}" placeholder="Perihal">
+            <input class="input mt-2" value="${esc(b.catatan||"")}" data-edit-catatan="${esc(b.belanjaId)}" placeholder="Catatan (optional)">
+          </td>
+          <td class="py-3 pr-3 align-top text-sm font-bold">
+            <input class="input" value="${esc(b.amaun||"")}" data-edit-amaun="${esc(b.belanjaId)}" inputmode="decimal" placeholder="Amaun">
+          </td>
+          <td class="py-3 pr-3 align-top">${statusSelectEdit}</td>
+          <td class="py-3 pr-3 align-top">
+            <div class="flex gap-2">
+              <button class="btn btn-primary" data-save="${esc(b.belanjaId)}">Save</button>
+              <button class="btn btn-outline" data-cancel="${esc(b.belanjaId)}">Cancel</button>
+            </div>
+          </td>
+          <td class="py-3 pr-3 align-top text-sm">
+            <input class="input" value="${esc(b.noDokumen||"")}" data-edit-doc="${esc(b.belanjaId)}" placeholder="No Dokumen">
+          </td>
+          <td class="py-3 pr-3 align-top text-sm">
+            <input class="input" value="${esc(b.payee||"")}" data-edit-payee="${esc(b.belanjaId)}" placeholder="Payee">
+          </td>
+        `;
+
         return `
           <tr class="border-b">
-            <td class="py-3 pr-3 align-top text-sm">
-              <div class="font-bold">${esc(b.belanjaId)}</div>
-              <div class="muted text-xs">${esc(b.tarikh||"")}</div>
-            </td>
-            <td class="py-3 pr-3 align-top text-sm">
-              <div class="font-semibold">${esc(b.perihal||"")}</div>
-              <div class="muted text-xs">${esc(b.catatan||"")}</div>
-            </td>
-            <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
-            <td class="py-3 pr-3 align-top">${select}</td>
-            <td class="py-3 pr-3 align-top flex flex-wrap gap-2">
-              <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
-              <button class="btn btn-danger" data-del-belanja="${esc(b.belanjaId)}" data-wid="${esc(w.waranId)}" ${closed?'disabled':''} title="Soft delete belanja">Delete</button>
-            </td>
-            <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
-            <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
+            ${isEditing ? editCells : viewCells}
           </tr>
         `;
       }).join("");
@@ -390,7 +319,8 @@
             </div>
             <div class="flex items-center gap-2">
               ${statusPill}
-              ${topActions}
+              <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
+              ${delWaranBtn}
             </div>
           </div>
 
@@ -413,16 +343,16 @@
             <div class="text-lg font-bold">Belanja</div>
             ${ (w.belanja||[]).length ? `
               <div class="mt-3 overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left table">
                   <thead>
                     <tr class="border-b">
-                      <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Status (edit)</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Tindakan</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
+                      <th class="py-2 pr-3">BelanjaID / Tarikh</th>
+                      <th class="py-2 pr-3">Perihal / Catatan</th>
+                      <th class="py-2 pr-3">Amaun</th>
+                      <th class="py-2 pr-3">Status (edit)</th>
+                      <th class="py-2 pr-3">Tindakan</th>
+                      <th class="py-2 pr-3">No Dokumen</th>
+                      <th class="py-2 pr-3">Payee</th>
                     </tr>
                   </thead>
                   <tbody>${belanjaRows}</tbody>
@@ -469,14 +399,89 @@
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
-        const sel = document.querySelector(`select[data-belanja="${CSS.escape(belanjaId)}"]`);
+        const sel = document.querySelector(`select[data-belanja-status="${CSS.escape(belanjaId)}"]`);
         const statusBelanja = sel ? sel.value : "";
         try{
           await api("updateBelanjaStatus", { token: state.token, belanjaId, statusBelanja });
-          toast("Updated ✅");
           await refresh();
         }catch(e){
           alert("Gagal update: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+
+    // Enter edit mode
+    document.querySelectorAll("[data-edit]").forEach(btn=>{
+      btn.onclick = ()=>{
+        const belanjaId = btn.getAttribute("data-edit");
+        state.editRow = belanjaId;
+        render();
+      };
+    });
+
+    // Cancel edit
+    document.querySelectorAll("[data-cancel]").forEach(btn=>{
+      btn.onclick = ()=>{
+        state.editRow = null;
+        render();
+      };
+    });
+
+    // Save edit
+    document.querySelectorAll("[data-save]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const belanjaId = btn.getAttribute("data-save");
+        const q = (sel)=>document.querySelector(sel);
+
+        const tarikh = q(`[data-edit-tarikh="${CSS.escape(belanjaId)}"]`)?.value || "";
+        const perihal = q(`[data-edit-perihal="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
+        const amaun = q(`[data-edit-amaun="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
+        const statusBelanja = q(`[data-edit-status="${CSS.escape(belanjaId)}"]`)?.value || "";
+        const noDokumen = q(`[data-edit-doc="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
+        const payee = q(`[data-edit-payee="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
+        const catatan = q(`[data-edit-catatan="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
+
+        if(!tarikh || !perihal || !amaun){
+          alert("Tarikh + Perihal + Amaun wajib isi masa Save.");
+          return;
+        }
+
+        try{
+          await api("editBelanja", { token: state.token, belanjaId, tarikh, perihal, amaun, statusBelanja, noDokumen, payee, catatan });
+          state.editRow = null;
+          await refresh();
+        }catch(e){
+          alert("Gagal edit: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+
+    // Delete belanja
+    document.querySelectorAll("[data-del]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const belanjaId = btn.getAttribute("data-del");
+        if(!confirm(`Confirm delete belanja ${belanjaId}? (soft delete)`)) return;
+        try{
+          await api("deleteBelanja", { token: state.token, belanjaId });
+          state.editRow = null;
+          await refresh();
+        }catch(e){
+          alert("Gagal delete belanja: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+
+    // Delete waran (admin)
+    document.querySelectorAll("[data-del-waran]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const waranId = btn.getAttribute("data-del-waran");
+        if(!confirm(`Confirm delete WARAN ${waranId}? Ini akan delete (soft) semua belanja bawah waran sekali.`)) return;
+        try{
+          await api("deleteWaran", { token: state.token, waranId });
+          state.editRow = null;
+          await refresh();
+        }catch(e){
+          alert("Gagal delete waran: " + (e.error || JSON.stringify(e)));
         }
       };
     });
@@ -486,7 +491,6 @@
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-add");
         const get = (q)=>document.querySelector(q);
-
         const perihal = get(`[data-add-perihal="${CSS.escape(waranId)}"]`).value.trim();
         const amaun = get(`[data-add-amaun="${CSS.escape(waranId)}"]`).value.trim();
         const statusBelanja = get(`[data-add-status="${CSS.escape(waranId)}"]`).value;
@@ -502,8 +506,6 @@
 
         const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
         try{
-          btn.disabled = true;
-          btn.textContent = "Saving...";
           await api("addBelanja", {
             token: state.token,
             waranId,
@@ -516,13 +518,9 @@
             payee,
             catatan
           });
-          toast("Belanja ditambah ✅");
           await refresh();
         }catch(e){
           alert("Gagal tambah belanja: " + (e.error || JSON.stringify(e)));
-        }finally{
-          btn.disabled = false;
-          btn.textContent = "Tambah Belanja";
         }
       };
     });
@@ -532,48 +530,11 @@
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
         try{
-          btn.disabled = true;
-          btn.textContent = "Generating...";
           const r = await api("exportWaranPdf", { token: state.token, waranId });
           window.open(r.url, "_blank");
         }catch(e){
           alert("Gagal export PDF: " + (e.error || JSON.stringify(e)));
-        }finally{
-          btn.disabled = false;
-          btn.textContent = "Export PDF";
         }
-      };
-    });
-
-    // ✅ Delete Waran (admin)
-    document.querySelectorAll("[data-del-waran]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const waranId = btn.getAttribute("data-del-waran");
-        const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
-        openConfirm({
-          title: "Delete Waran",
-          subtitle: `No Waran: ${w ? w.noWaran : waranId}`,
-          desc: `Kau pasti nak delete (soft) waran ini? <br/><b>Semua belanja bawah waran ini masih kekal dalam sheet</b> — cuma waran akan hilang dari paparan.`,
-          action: "deleteWaran",
-          payload: { token: state.token, waranId },
-          onDone: refresh
-        });
-      };
-    });
-
-    // ✅ Delete Belanja
-    document.querySelectorAll("[data-del-belanja]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const belanjaId = btn.getAttribute("data-del-belanja");
-        const waranId = btn.getAttribute("data-wid") || "";
-        openConfirm({
-          title: "Delete Belanja",
-          subtitle: `BelanjaID: ${belanjaId}`,
-          desc: `Kau pasti nak delete (soft) rekod belanja ini?`,
-          action: "deleteBelanja",
-          payload: { token: state.token, belanjaId },
-          onDone: refresh
-        });
       };
     });
   }
@@ -643,11 +604,11 @@
       try{
         el("addWaranMsg").textContent = "Saving...";
         await api("addWaran", { token: state.token, noWaran, tarikhTerima, perihal, jumlahWaran, tahun, statusWaran, catatan });
-        el("addWaranMsg").textContent = "Waran ditambah ✅";
+        el("addWaranMsg").textContent = "Waran ditambah.";
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
-        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
+        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e)));
       }
     };
 
