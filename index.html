@@ -22,48 +22,46 @@
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
 
-    /* Modal */
-    .modalWrap{ position:fixed; inset:0; z-index:50; display:none; }
-    .modalWrap.show{ display:block; }
-    .modalBackdrop{ position:absolute; inset:0; background:rgba(0,0,0,.35); }
-    .modalCard{ position:relative; max-width:720px; margin:6rem auto 0; }
-    @media (max-width: 640px){
-      .modalCard{ margin:3.5rem 1rem 0; }
-    }
-
-    /* ===== PRINT FOOTER ===== */
-    .printFooter{
-      display:none;
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 10px 16px;
-      font-size: 11px;
-      color: #64748b;
-      border-top: 1px solid rgba(15,23,42,.12);
-      background: #fff;
+    /* Site footer (normal view) */
+    .siteFooter{
+      margin-top: 18px;
       text-align: center;
-      z-index: 9999;
+      color: #64748b;
+      font-size: 12px;
+      padding: 14px 10px;
     }
 
-    @media print{
-      body{ background:#fff !important; }
-      .printHide{ display:none !important; }
-      .card{ box-shadow:none !important; }
-      .printFooter{ display:block !important; }
-      /* bagi ruang bawah supaya content tak bertindih footer */
-      .printPadBottom{ padding-bottom: 52px !important; }
+    /* Print footer */
+    @media print {
+      body { background:#fff !important; }
+      /* remove shadows/borders to look clean on print */
+      .card { box-shadow:none !important; }
+      /* hide buttons/inputs that don't make sense on print */
+      .btn, button, select, input, #googleBtn { display:none !important; }
+      #authCard { display:none !important; }
+
+      /* print footer fixed at bottom */
+      .siteFooter{
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 10px 0;
+        margin: 0;
+        border-top: 1px solid #e5e7eb;
+        background: #fff;
+        color:#475569;
+      }
+
+      /* leave space so footer doesn't overlap content */
+      body { padding-bottom: 48px !important; }
     }
   </style>
 </head>
 
 <body class="min-h-screen">
-  <!-- Footer untuk print -->
-  <div class="printFooter" id="printFooterText">© 2026 kurakurahijau.com | Lejar Akreditasi</div>
-
-  <div class="max-w-6xl mx-auto px-4 py-10 printPadBottom">
-    <div class="card p-7 printHide">
+  <div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="card p-7">
       <div class="flex items-start justify-between gap-4">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
@@ -76,7 +74,7 @@
     </div>
 
     <!-- Auth -->
-    <div id="authCard" class="card p-7 mt-6 printHide">
+    <div id="authCard" class="card p-7 mt-6">
       <h2 class="text-xl font-bold text-slate-900">Sila login</h2>
       <p class="muted mt-1">Whitelist sahaja boleh masuk. (JSONP — confirm tak kena CORS)</p>
 
@@ -89,7 +87,7 @@
     <!-- App -->
     <div id="app" class="hidden">
       <!-- Controls -->
-      <div class="card p-6 mt-6 printHide">
+      <div class="card p-6 mt-6">
         <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
           <div class="flex flex-col md:flex-row gap-3 md:items-center">
             <select id="yearFilter" class="input md:w-44"></select>
@@ -132,7 +130,7 @@
       </div>
 
       <!-- Add waran (admin only) -->
-      <div id="adminAddWaran" class="card p-6 mt-6 hidden printHide">
+      <div id="adminAddWaran" class="card p-6 mt-6 hidden">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-xl font-bold text-slate-900">Tambah Waran</h2>
@@ -173,84 +171,19 @@
         <div id="waranList" class="mt-4 flex flex-col gap-6"></div>
       </div>
     </div>
-  </div>
 
-  <!-- ===== Edit Belanja Modal ===== -->
-  <div id="editModal" class="modalWrap printHide">
-    <div class="modalBackdrop"></div>
-
-    <div class="modalCard card p-6">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <div class="text-lg font-extrabold text-slate-900">Edit Belanja</div>
-          <div class="mini" id="editMeta">—</div>
-        </div>
-        <button class="btn btn-outline" id="btnCloseEdit">Tutup</button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-        <div>
-          <div class="mini mb-1">Tarikh</div>
-          <input id="e_tarikh" type="date" class="input"/>
-        </div>
-        <div>
-          <div class="mini mb-1">Amaun (RM)</div>
-          <input id="e_amaun" class="input" inputmode="decimal" placeholder="cth: 150"/>
-        </div>
-
-        <div class="md:col-span-2">
-          <div class="mini mb-1">Perihal</div>
-          <input id="e_perihal" class="input" placeholder="Perihal"/>
-        </div>
-
-        <div>
-          <div class="mini mb-1">Status</div>
-          <select id="e_status" class="input">
-            <option>KERTAS KERJA</option>
-            <option>HANTAR PERMOHONAN</option>
-            <option>SELESAI</option>
-            <option>BATAL</option>
-          </select>
-        </div>
-        <div>
-          <div class="mini mb-1">No Dokumen</div>
-          <input id="e_noDokumen" class="input" placeholder="cth: INV00021"/>
-        </div>
-
-        <div class="md:col-span-2">
-          <div class="mini mb-1">Payee</div>
-          <input id="e_payee" class="input" placeholder="Nama penerima"/>
-        </div>
-
-        <div class="md:col-span-2">
-          <div class="mini mb-1">Catatan (optional)</div>
-          <input id="e_catatan" class="input" placeholder="Catatan"/>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3 mt-5">
-        <button class="btn btn-primary" id="btnSaveEdit">Simpan</button>
-        <button class="btn btn-outline" id="btnCancelEdit">Batal</button>
-        <div id="editMsg" class="muted text-sm"></div>
-      </div>
-
-      <div class="mini mt-3">
-        Nota guard: Bila status jadi <b>HANTAR PERMOHONAN</b>/<b>SELESAI</b>, sistem akan check baki waran dulu.
-      </div>
+    <!-- Footer (screen + print) -->
+    <div class="siteFooter" id="siteFooter">
+      © <span id="yearNow"></span> kurakurahijau.com | Lejar Akreditasi
     </div>
   </div>
 
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
-  // ================== PRINT FOOTER YEAR ==================
-  (function setPrintFooter(){
-    const y = new Date().getFullYear();
-    const f = document.getElementById("printFooterText");
-    if (f) f.textContent = `© ${y} kurakurahijau.com | Lejar Akreditasi`;
-  })();
+  // ✅ guna URL Apps Script terkini
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
   // ================== STATE ==================
   const state = {
@@ -258,6 +191,9 @@
     profile: null,
     data: null
   };
+
+  // year footer
+  document.getElementById("yearNow").textContent = String(new Date().getFullYear());
 
   // ================== JSONP helper ==================
   function b64urlEncode(str){
@@ -291,21 +227,6 @@
 
   function setAuthError(msg){ el("authErr").textContent = msg || ""; }
 
-  function isCommittedStatus(s){
-    s = String(s||"").toUpperCase();
-    return (s === "HANTAR PERMOHONAN" || s === "SELESAI");
-  }
-
-  function isNumberLike(v){
-    const n = Number(String(v||"").replace(/,/g,"").trim());
-    return !isNaN(n) && isFinite(n);
-  }
-
-  function num(v){
-    const n = Number(String(v||"").replace(/,/g,"").trim());
-    return isNaN(n) ? 0 : n;
-  }
-
   function renderUserBox(){
     const box = el("userBox");
     if (!state.profile){
@@ -333,79 +254,6 @@
     el("yearFilter").innerHTML = list.map(y=>`<option value="${esc(y)}">${y?esc(y):"Semua tahun"}</option>`).join("");
   }
 
-  // ================== Helpers: find belanja ==================
-  function findBelanjaById(belanjaId){
-    for(const w of (state.data?.waran || [])){
-      const b = (w.belanja||[]).find(x=>x.belanjaId===belanjaId);
-      if (b) return { waran: w, belanja: b };
-    }
-    return null;
-  }
-
-  function computeAvailableFromState(waranId, excludeBelanjaId){
-    const w = (state.data?.waran || []).find(x=>x.waranId===waranId);
-    if(!w) return 0;
-    const total = num(w.jumlahWaran);
-    const committedSum = (w.belanja||[]).reduce((acc, b)=>{
-      if(excludeBelanjaId && b.belanjaId === excludeBelanjaId) return acc;
-      return acc + (isCommittedStatus(b.statusBelanja) ? num(b.amaun) : 0);
-    }, 0);
-    const avail = total - committedSum;
-    return avail < 0 ? 0 : avail;
-  }
-
-  // ================== EDIT MODAL STATE ==================
-  let editing = {
-    belanjaId: "",
-    waranId: "",
-    noWaran: "",
-    waranStatus: "",
-    originalStatus: "",
-    originalAmaun: 0
-  };
-
-  function openEditModal(found){
-    const { waran:w, belanja:b } = found;
-    const closed = String(w.statusWaran||"").toUpperCase()==="CLOSED";
-    if (closed){
-      alert("Waran CLOSED — edit belanja tak dibenarkan.");
-      return;
-    }
-
-    editing = {
-      belanjaId: b.belanjaId,
-      waranId: w.waranId,
-      noWaran: w.noWaran,
-      waranStatus: w.statusWaran,
-      originalStatus: String(b.statusBelanja||"").toUpperCase(),
-      originalAmaun: num(b.amaun)
-    };
-
-    el("editMeta").textContent = `${b.belanjaId} · ${w.noWaran} (${w.waranId})`;
-
-    el("e_tarikh").value = (b.tarikh || "");
-    el("e_amaun").value = (b.amaun ?? "");
-    el("e_perihal").value = (b.perihal || "");
-    el("e_status").value = (b.statusBelanja || "KERTAS KERJA");
-    el("e_noDokumen").value = (b.noDokumen || "");
-    el("e_payee").value = (b.payee || "");
-    el("e_catatan").value = (b.catatan || "");
-
-    el("editMsg").textContent = "";
-    el("editModal").classList.add("show");
-  }
-
-  function closeEditModal(){
-    el("editModal").classList.remove("show");
-    editing = { belanjaId:"", waranId:"", noWaran:"", waranStatus:"", originalStatus:"", originalAmaun:0 };
-  }
-
-  el("btnCloseEdit").onclick = closeEditModal;
-  el("btnCancelEdit").onclick = closeEditModal;
-  el("editModal").addEventListener("click",(e)=>{
-    if (e.target && e.target.classList.contains("modalBackdrop")) closeEditModal();
-  });
-
   // ================== Render main ==================
   function render(){
     const data = state.data;
@@ -421,6 +269,7 @@
 
     renderYearFilter(data.waran || []);
 
+    // admin section
     const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
     el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
@@ -433,10 +282,9 @@
       const belanjaRows = (w.belanja||[]).map(b=>{
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
         const select = `
-          <select class="input printHide" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
+          <select class="input" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
-          <div class="mini md:hidden">${esc(b.statusBelanja||"")}</div>
         `;
         return `
           <tr class="border-b">
@@ -450,9 +298,8 @@
             </td>
             <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
             <td class="py-3 pr-3 align-top">${select}</td>
-            <td class="py-3 pr-3 align-top whitespace-nowrap printHide">
+            <td class="py-3 pr-3 align-top">
               <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
-              <button class="btn btn-outline ml-2" data-edit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
             </td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
@@ -467,7 +314,7 @@
               <div class="text-lg font-extrabold">${esc(w.noWaran)} <span class="muted text-sm">(${esc(w.waranId)})</span></div>
               <div class="muted text-sm">${esc(w.tarikhTerima)} · <span class="font-semibold text-slate-900">${esc(w.perihal)}</span></div>
             </div>
-            <div class="flex items-center gap-2 printHide">
+            <div class="flex items-center gap-2">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
             </div>
@@ -498,8 +345,8 @@
                       <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Status</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted printHide">Tindakan</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Status (edit)</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted"></th>
                       <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
                     </tr>
@@ -510,16 +357,9 @@
             ` : `<div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>`}
           </div>
 
-          <div class="mt-6 ${closed ? 'disabledWrap' : ''} printHide">
+          <div class="mt-6 ${closed ? 'disabledWrap' : ''}">
             <div class="card p-5">
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <div class="font-bold">Tambah Belanja (waran ini)</div>
-                  <div class="mini mt-1">Baki semasa (Available): <b>${money(w.computed.available)}</b></div>
-                </div>
-                ${closed ? `<div class="text-red-600 font-semibold text-sm">Waran CLOSED</div>` : ``}
-              </div>
-
+              <div class="font-bold">Tambah Belanja (waran ini)</div>
               <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-3">
                 <input class="input" placeholder="Perihal" data-add-perihal="${esc(w.waranId)}"/>
                 <input class="input" placeholder="Amaun" inputmode="decimal" data-add-amaun="${esc(w.waranId)}"/>
@@ -538,10 +378,7 @@
               </div>
               <div class="flex items-center gap-3 mt-4">
                 <button class="btn btn-primary" data-add="${esc(w.waranId)}">Tambah Belanja</button>
-                ${closed ? `<div class="text-red-600 font-semibold text-sm">Belanja disabled sebab waran CLOSED.</div>` : ``}
-              </div>
-              <div class="mini mt-2">
-                Guard: jika status <b>HANTAR PERMOHONAN</b>/<b>SELESAI</b>, amaun tak boleh melebihi baki.
+                ${closed ? `<div class="text-red-600 font-semibold text-sm">Waran CLOSED — belanja disabled.</div>` : ``}
               </div>
             </div>
           </div>
@@ -554,32 +391,13 @@
   }
 
   function bindDynamicActions(){
+    // Update status belanja
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
         const sel = document.querySelector(`select[data-belanja="${CSS.escape(belanjaId)}"]`);
         const statusBelanja = sel ? sel.value : "";
-
         try{
-          const found = findBelanjaById(belanjaId);
-          if(found){
-            const w = found.waran;
-            const b = found.belanja;
-
-            const fromCommitted = isCommittedStatus(b.statusBelanja);
-            const toCommitted = isCommittedStatus(statusBelanja);
-
-            if(!fromCommitted && toCommitted){
-              const avail = computeAvailableFromState(w.waranId);
-              const amaun = num(b.amaun);
-              if (amaun > avail){
-                alert(`Tak boleh set ke COMMITTED. Amaun melebihi baki.\nBaki: ${money(avail)}\nAmaun: ${money(amaun)}`);
-                sel.value = b.statusBelanja;
-                return;
-              }
-            }
-          }
-
           await api("updateBelanjaStatus", { token: state.token, belanjaId, statusBelanja });
           await refresh();
         }catch(e){
@@ -588,54 +406,25 @@
       };
     });
 
-    document.querySelectorAll("[data-edit]").forEach(btn=>{
-      btn.onclick = ()=>{
-        const belanjaId = btn.getAttribute("data-edit");
-        const found = findBelanjaById(belanjaId);
-        if(!found){
-          alert("Data belanja tak jumpa (try refresh).");
-          return;
-        }
-        openEditModal(found);
-      };
-    });
-
+    // Add belanja
     document.querySelectorAll("[data-add]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-add");
         const get = (q)=>document.querySelector(q);
         const perihal = get(`[data-add-perihal="${CSS.escape(waranId)}"]`).value.trim();
-        const amaunRaw = get(`[data-add-amaun="${CSS.escape(waranId)}"]`).value.trim();
+        const amaun = get(`[data-add-amaun="${CSS.escape(waranId)}"]`).value.trim();
         const statusBelanja = get(`[data-add-status="${CSS.escape(waranId)}"]`).value;
         const noDokumen = get(`[data-add-doc="${CSS.escape(waranId)}"]`).value.trim();
         const payee = get(`[data-add-payee="${CSS.escape(waranId)}"]`).value.trim();
         const tarikh = get(`[data-add-tarikh="${CSS.escape(waranId)}"]`).value;
         const catatan = get(`[data-add-catatan="${CSS.escape(waranId)}"]`).value.trim();
 
-        if(!perihal || !amaunRaw || !tarikh){
+        if(!perihal || !amaun || !tarikh){
           alert("Perihal + Amaun + Tarikh wajib isi.");
-          return;
-        }
-        if(!isNumberLike(amaunRaw) || num(amaunRaw) <= 0){
-          alert("Amaun mesti nombor yang betul (lebih dari 0).");
           return;
         }
 
         const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
-        if(!w){
-          alert("Waran tak jumpa (try refresh).");
-          return;
-        }
-
-        if(isCommittedStatus(statusBelanja)){
-          const avail = computeAvailableFromState(waranId);
-          const amaun = num(amaunRaw);
-          if(amaun > avail){
-            alert(`Amaun melebihi baki waran.\nBaki: ${money(avail)}\nAmaun: ${money(amaun)}`);
-            return;
-          }
-        }
-
         try{
           await api("addBelanja", {
             token: state.token,
@@ -643,7 +432,7 @@
             noWaran: w.noWaran,
             tarikh,
             perihal,
-            amaun: amaunRaw,
+            amaun,
             statusBelanja,
             noDokumen,
             payee,
@@ -656,6 +445,7 @@
       };
     });
 
+    // Export PDF
     document.querySelectorAll("[data-pdf]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
@@ -669,59 +459,6 @@
     });
   }
 
-  el("btnSaveEdit").onclick = async ()=>{
-    if(!editing.belanjaId){
-      alert("Tiada item untuk edit.");
-      return;
-    }
-
-    const tarikh = el("e_tarikh").value;
-    const amaunRaw = el("e_amaun").value.trim();
-    const perihal = el("e_perihal").value.trim();
-    const statusBelanja = el("e_status").value;
-    const noDokumen = el("e_noDokumen").value.trim();
-    const payee = el("e_payee").value.trim();
-    const catatan = el("e_catatan").value.trim();
-
-    if(!tarikh || !amaunRaw || !perihal){
-      el("editMsg").textContent = "Tarikh + Amaun + Perihal wajib isi.";
-      return;
-    }
-    if(!isNumberLike(amaunRaw) || num(amaunRaw) <= 0){
-      el("editMsg").textContent = "Amaun mesti nombor yang betul (lebih dari 0).";
-      return;
-    }
-
-    const newAmaun = num(amaunRaw);
-    if(isCommittedStatus(statusBelanja)){
-      const avail = computeAvailableFromState(editing.waranId, editing.belanjaId);
-      if(newAmaun > avail){
-        el("editMsg").textContent = `Amaun melebihi baki. Baki: ${money(avail)}.`;
-        return;
-      }
-    }
-
-    try{
-      el("editMsg").textContent = "Saving...";
-      await api("editBelanja", {
-        token: state.token,
-        belanjaId: editing.belanjaId,
-        tarikh,
-        perihal,
-        amaun: amaunRaw,
-        statusBelanja,
-        noDokumen,
-        payee,
-        catatan
-      });
-      el("editMsg").textContent = "Saved.";
-      closeEditModal();
-      await refresh();
-    }catch(e){
-      el("editMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
-    }
-  };
-
   async function refresh(){
     const year = el("yearFilter").value || "";
     const q = el("q").value.trim();
@@ -730,6 +467,7 @@
     render();
   }
 
+  // ================== Google Login ==================
   function initGoogle(){
     google.accounts.id.initialize({
       client_id: CLIENT_ID,
@@ -768,6 +506,7 @@
     el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
     el("yearFilter").addEventListener("change", refresh);
 
+    // admin add waran
     el("btnAddWaran").onclick = async ()=>{
       const noWaran = el("w_noWaran").value.trim();
       const tarikhTerima = el("w_tarikh").value;
@@ -781,10 +520,6 @@
         el("addWaranMsg").textContent = "NoWaran + Tarikh + Perihal + Jumlah wajib isi.";
         return;
       }
-      if(!isNumberLike(jumlahWaran) || num(jumlahWaran) <= 0){
-        el("addWaranMsg").textContent = "Jumlah waran mesti nombor yang betul (lebih dari 0).";
-        return;
-      }
 
       try{
         el("addWaranMsg").textContent = "Saving...";
@@ -793,10 +528,11 @@
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
-        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
+        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e)));
       }
     };
 
+    // auto-login
     if(state.token){
       try{
         const me = await api("me", { token: state.token });
