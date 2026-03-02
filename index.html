@@ -24,31 +24,34 @@
 
     /* Footer */
     .siteFooter{
+      margin-top: 28px;
+      padding: 18px 0 8px;
       text-align:center;
-      font-size:12px;
       color:#64748b;
-      padding:18px 10px;
+      font-size: 12px;
     }
 
-    /* Print footer: fixed bawah */
+    /* Print rules: footer ikut flow (tak fixed) supaya tak pergi page 2 */
     @media print{
       body{ background:#fff !important; }
-      .siteFooter{
-        position:fixed;
-        left:0; right:0; bottom:0;
-        padding:10px 0;
-        border-top:1px solid #e5e7eb;
-        background:#fff;
-      }
       .noPrint{ display:none !important; }
-      body{ padding-bottom:55px !important; }
       .card{ box-shadow:none !important; }
+      .siteFooter{
+        position: static !important;
+        border-top: 1px solid #e5e7eb;
+        background: transparent;
+        padding: 10px 0 0;
+        margin-top: 12px;
+        page-break-inside: avoid;
+      }
+      body{ padding-bottom: 0 !important; }
     }
   </style>
 </head>
 
 <body class="min-h-screen">
   <div class="max-w-6xl mx-auto px-4 py-10">
+    <!-- Header -->
     <div class="card p-7">
       <div class="flex items-start justify-between gap-4">
         <div>
@@ -62,7 +65,7 @@
     </div>
 
     <!-- Auth -->
-    <div id="authCard" class="card p-7 mt-6 noPrint">
+    <div id="authCard" class="card p-7 mt-6">
       <h2 class="text-xl font-bold text-slate-900">Sila login</h2>
       <p class="muted mt-1">Whitelist sahaja boleh masuk. (JSONP — confirm tak kena CORS)</p>
 
@@ -161,17 +164,14 @@
     </div>
 
     <!-- Footer -->
-    <div class="siteFooter">
-      © <span id="yearNow"></span> kurakurahijau.com | Lejar Akreditasi
-    </div>
+    <div class="siteFooter" id="siteFooter"></div>
   </div>
 
 <script>
-  // Footer year
-  document.getElementById("yearNow").textContent = new Date().getFullYear();
-
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+
+  // ✅ Apps Script terkini kau
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
   // ================== STATE ==================
@@ -240,6 +240,7 @@
     el("yearFilter").innerHTML = list.map(y=>`<option value="${esc(y)}">${y?esc(y):"Semua tahun"}</option>`).join("");
   }
 
+  // ================== Render main ==================
   function render(){
     const data = state.data;
     if (!data) return;
@@ -269,7 +270,9 @@
           <select class="input noPrint" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
+          <div class="mini printOnly hidden">${esc(b.statusBelanja||"")}</div>
         `;
+
         return `
           <tr class="border-b">
             <td class="py-3 pr-3 align-top text-sm">
@@ -282,8 +285,8 @@
             </td>
             <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
             <td class="py-3 pr-3 align-top">${select}</td>
-            <td class="py-3 pr-3 align-top">
-              <button class="btn btn-dark noPrint" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
+            <td class="py-3 pr-3 align-top noPrint">
+              <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
             </td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
@@ -301,6 +304,9 @@
             <div class="flex items-center gap-2 noPrint">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
+            </div>
+            <div class="hidden print:block">
+              ${statusPill}
             </div>
           </div>
 
@@ -329,7 +335,7 @@
                       <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted noPrint">Status (edit)</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Status</th>
                       <th class="py-2 pr-3 text-xs uppercase muted noPrint"></th>
                       <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
@@ -447,6 +453,12 @@
     render();
   }
 
+  function setFooter(){
+    const y = new Date().getFullYear();
+    el("siteFooter").textContent = `© ${y} kurakurahijau.com | Lejar Akreditasi`;
+  }
+
+  // ================== Google Login ==================
   function initGoogle(){
     google.accounts.id.initialize({
       client_id: CLIENT_ID,
@@ -470,11 +482,13 @@
 
     google.accounts.id.renderButton(
       document.getElementById("googleBtn"),
-      { theme:"outline", size:"large", text:"signin_with", shape:"pill", width:320 }
+      { theme: "outline", size: "large", text: "signin_with", shape: "pill", width: 320 }
     );
   }
 
   async function bootstrap(){
+    setFooter();
+
     el("btnRefresh").onclick = refresh;
     el("btnSearch").onclick = refresh;
     el("btnClear").onclick = ()=>{
