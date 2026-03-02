@@ -10,162 +10,531 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
-    body{
-      background: linear-gradient(180deg,#f6f8ff,#f4fbff);
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-    }
-
-    .card{
-      border:1px solid rgba(15,23,42,.08);
-      border-radius:18px;
-      background:#fff;
-      box-shadow:0 10px 25px rgba(2,6,23,.05);
-    }
-
-    .pill{
-      border:1px solid rgba(15,23,42,.08);
-      border-radius:999px;
-      padding:2px 10px;
-      font-size:12px;
-    }
-
-    .btn{
-      border-radius:12px;
-      padding:10px 14px;
-      font-weight:700;
-    }
-
+    body{ background: linear-gradient(180deg,#f6f8ff,#f4fbff); }
+    .card{ border:1px solid rgba(15,23,42,.08); border-radius:18px; background:#fff; box-shadow: 0 10px 25px rgba(2,6,23,.05); }
+    .pill{ border:1px solid rgba(15,23,42,.08); border-radius:999px; padding:2px 10px; font-size:12px; }
+    .btn{ border-radius: 12px; padding: 10px 14px; font-weight: 700; }
     .btn-primary{ background:#2563eb; color:#fff; }
     .btn-dark{ background:#0f172a; color:#fff; }
     .btn-outline{ border:1px solid rgba(15,23,42,.14); background:#fff; color:#0f172a; }
-
-    .input{
-      border:1px solid rgba(15,23,42,.12);
-      border-radius:12px;
-      padding:10px 12px;
-      width:100%;
-    }
-
+    .input{ border:1px solid rgba(15,23,42,.12); border-radius:12px; padding:10px 12px; width:100%; }
     .muted{ color:#64748b; }
     .mini{ font-size:12px; color:#64748b; }
+    .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
 
-    /* ===== Footer (screen) ===== */
+    /* Footer */
     .siteFooter{
-      margin-top:auto;
       text-align:center;
       font-size:12px;
       color:#64748b;
       padding:18px 10px;
     }
 
-    /* ===== Print Style ===== */
+    /* Print footer: fixed bawah */
     @media print{
       body{ background:#fff !important; }
-
-      .btn,
-      button,
-      select,
-      input,
-      #googleBtn{
-        display:none !important;
-      }
-
-      #authCard{
-        display:none !important;
-      }
-
-      .card{
-        box-shadow:none !important;
-      }
-
       .siteFooter{
         position:fixed;
-        bottom:0;
-        left:0;
-        right:0;
+        left:0; right:0; bottom:0;
         padding:10px 0;
         border-top:1px solid #e5e7eb;
         background:#fff;
       }
-
-      body{
-        padding-bottom:50px !important;
-      }
+      .noPrint{ display:none !important; }
+      body{ padding-bottom:55px !important; }
+      .card{ box-shadow:none !important; }
     }
   </style>
 </head>
 
-<body>
-
-  <div class="max-w-6xl mx-auto px-4 py-10 w-full">
-
-    <!-- Header -->
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-10">
     <div class="card p-7">
-      <h1 class="text-3xl font-extrabold text-slate-900">
-        Lejar Akreditasi
-      </h1>
-      <p class="muted mt-2">
-        Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.
-      </p>
-    </div>
-
-    <!-- Auth -->
-    <div id="authCard" class="card p-7 mt-6">
-      <h2 class="text-xl font-bold text-slate-900">Sila login</h2>
-      <p class="muted mt-1">
-        Whitelist sahaja boleh masuk. (JSONP — confirm tak kena CORS)
-      </p>
-
-      <div class="mt-4">
-        <div id="googleBtn"></div>
-        <div id="authErr" class="text-red-600 font-semibold mt-2"></div>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
+          <p class="muted mt-2">
+            Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.
+          </p>
+        </div>
+        <div id="userBox" class="text-right"></div>
       </div>
     </div>
 
-  </div>
+    <!-- Auth -->
+    <div id="authCard" class="card p-7 mt-6 noPrint">
+      <h2 class="text-xl font-bold text-slate-900">Sila login</h2>
+      <p class="muted mt-1">Whitelist sahaja boleh masuk. (JSONP — confirm tak kena CORS)</p>
 
-  <!-- Footer -->
-  <div class="siteFooter">
-    © <span id="yearNow"></span> kurakurahijau.com | Lejar Akreditasi
+      <div class="mt-4 flex flex-col gap-3">
+        <div id="googleBtn"></div>
+        <div id="authErr" class="text-red-600 font-semibold"></div>
+      </div>
+    </div>
+
+    <!-- App -->
+    <div id="app" class="hidden">
+      <!-- Controls -->
+      <div class="card p-6 mt-6 noPrint">
+        <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <div class="flex flex-col md:flex-row gap-3 md:items-center">
+            <select id="yearFilter" class="input md:w-44"></select>
+            <input id="q" class="input md:w-[28rem]" placeholder="Cari NoWaran / Perihal / Payee / No Dokumen..." />
+            <button class="btn btn-dark" id="btnSearch">Cari</button>
+            <button class="btn btn-outline" id="btnClear">Reset</button>
+          </div>
+          <div class="flex items-center gap-3 justify-between md:justify-end">
+            <div class="mini" id="lastSync"></div>
+            <button class="btn btn-dark" id="btnRefresh">Refresh</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="card p-6 mt-6">
+        <h2 class="text-xl font-bold text-slate-900">Ringkasan</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL PENERIMAAN</div>
+            <div class="text-2xl font-extrabold" id="sumPenerimaan">RM 0</div>
+            <div class="text-xs muted mt-1">Jumlah semua waran (exclude CLOSED)</div>
+          </div>
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL COMMITTED</div>
+            <div class="text-2xl font-extrabold" id="sumCommitted">RM 0</div>
+            <div class="text-xs muted mt-1">HANTAR PERMOHONAN + SELESAI</div>
+          </div>
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL DRAFT</div>
+            <div class="text-2xl font-extrabold" id="sumDraft">RM 0</div>
+            <div class="text-xs muted mt-1">KERTAS KERJA + BATAL</div>
+          </div>
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL AVAILABLE</div>
+            <div class="text-2xl font-extrabold" id="sumAvailable">RM 0</div>
+            <div class="text-xs muted mt-1">TotalWaran – Committed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add waran (admin only) -->
+      <div id="adminAddWaran" class="card p-6 mt-6 hidden noPrint">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Tambah Waran</h2>
+            <p class="muted text-sm">Waran baru akan muncul sebagai card.</p>
+          </div>
+          <span class="pill bg-emerald-50 text-emerald-700 font-bold">ADMIN MODE</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4">
+          <input id="w_noWaran" class="input" placeholder="No Waran" />
+          <input id="w_tarikh" type="date" class="input" />
+          <input id="w_perihal" class="input md:col-span-2" placeholder="Perihal" />
+          <input id="w_jumlah" class="input" placeholder="Jumlah (RM)" inputmode="decimal" />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <input id="w_tahun" class="input" placeholder="Tahun (auto jika kosong)" />
+          <select id="w_status" class="input">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="CLOSED">CLOSED</option>
+          </select>
+          <input id="w_catatan" class="input md:col-span-2" placeholder="Catatan (optional)" />
+        </div>
+
+        <div class="flex items-center gap-3 mt-4">
+          <button class="btn btn-primary" id="btnAddWaran">Tambah Waran</button>
+          <div id="addWaranMsg" class="muted text-sm"></div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="card p-6 mt-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-bold text-slate-900">Waran</h2>
+          <div class="muted text-sm" id="countWaran"></div>
+        </div>
+
+        <div id="waranList" class="mt-4 flex flex-col gap-6"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="siteFooter">
+      © <span id="yearNow"></span> kurakurahijau.com | Lejar Akreditasi
+    </div>
   </div>
 
 <script>
-  // Auto year
-  document.getElementById("yearNow").textContent =
-    new Date().getFullYear();
+  // Footer year
+  document.getElementById("yearNow").textContent = new Date().getFullYear();
 
-  const CLIENT_ID =
-    "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+  // ================== CONFIG ==================
+  const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
+
+  // ================== STATE ==================
+  const state = {
+    token: localStorage.getItem("LA_TOKEN") || "",
+    profile: null,
+    data: null
+  };
+
+  // ================== JSONP helper ==================
+  function b64urlEncode(str){
+    return btoa(unescape(encodeURIComponent(str)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  function api(action, payload){
+    return new Promise((resolve, reject)=>{
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      window[cb] = (resp)=>{
+        try { delete window[cb]; script.remove(); } catch(e){}
+        if (!resp || resp.ok === false) reject(resp || {error:"Unknown error"});
+        else resolve(resp.data);
+      };
+      const data = b64urlEncode(JSON.stringify(payload || {}));
+      const script = document.createElement("script");
+      script.src = `${SCRIPT_URL}?action=${encodeURIComponent(action)}&callback=${encodeURIComponent(cb)}&data=${encodeURIComponent(data)}`;
+      script.onerror = ()=>{
+        try { delete window[cb]; script.remove(); } catch(e){}
+        reject({error:"Failed to load JSONP"});
+      };
+      document.body.appendChild(script);
+    });
+  }
+
+  // ================== UI helpers ==================
+  const el = (id)=>document.getElementById(id);
+  const money = (n)=>"RM " + (Number(n||0)).toLocaleString("en-MY", {minimumFractionDigits:0, maximumFractionDigits:0});
+  const esc = (s)=>String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+
+  function setAuthError(msg){ el("authErr").textContent = msg || ""; }
+
+  function renderUserBox(){
+    const box = el("userBox");
+    if (!state.profile){
+      box.innerHTML = "";
+      return;
+    }
+    box.innerHTML = `
+      <div class="text-sm muted">${esc(state.profile.email)}</div>
+      <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
+      <button class="btn mt-2 btn-outline noPrint" id="btnLogout">Logout</button>
+    `;
+    el("btnLogout").onclick = ()=>{
+      localStorage.removeItem("LA_TOKEN");
+      state.token = "";
+      state.profile = null;
+      state.data = null;
+      location.reload();
+    };
+  }
+
+  function renderYearFilter(waran){
+    const years = new Set();
+    waran.forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
+    const list = ["", ...Array.from(years).sort().reverse()];
+    el("yearFilter").innerHTML = list.map(y=>`<option value="${esc(y)}">${y?esc(y):"Semua tahun"}</option>`).join("");
+  }
+
+  function render(){
+    const data = state.data;
+    if (!data) return;
+
+    el("sumPenerimaan").textContent = money(data.summary.totalPenerimaan);
+    el("sumCommitted").textContent = money(data.summary.totalCommitted);
+    el("sumDraft").textContent = money(data.summary.totalDraft);
+    el("sumAvailable").textContent = money(data.summary.totalAvailable);
+
+    el("countWaran").textContent = `${(data.waran||[]).length} waran`;
+    el("lastSync").textContent = `Last sync: ${new Date().toLocaleString("ms-MY")}`;
+
+    renderYearFilter(data.waran || []);
+
+    const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
+    el("adminAddWaran").classList.toggle("hidden", !isAdmin);
+
+    el("waranList").innerHTML = (data.waran||[]).map(w=>{
+      const closed = String(w.statusWaran||"").toUpperCase()==="CLOSED";
+      const statusPill = closed
+        ? `<span class="pill bg-slate-100 text-slate-700 font-bold">CLOSED</span>`
+        : `<span class="pill bg-emerald-50 text-emerald-700 font-bold">ACTIVE</span>`;
+
+      const belanjaRows = (w.belanja||[]).map(b=>{
+        const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
+        const select = `
+          <select class="input noPrint" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
+            ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
+          </select>
+        `;
+        return `
+          <tr class="border-b">
+            <td class="py-3 pr-3 align-top text-sm">
+              <div class="font-bold">${esc(b.belanjaId)}</div>
+              <div class="muted text-xs">${esc(b.tarikh||"")}</div>
+            </td>
+            <td class="py-3 pr-3 align-top text-sm">
+              <div class="font-semibold">${esc(b.perihal||"")}</div>
+              <div class="muted text-xs">${esc(b.catatan||"")}</div>
+            </td>
+            <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
+            <td class="py-3 pr-3 align-top">${select}</td>
+            <td class="py-3 pr-3 align-top">
+              <button class="btn btn-dark noPrint" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
+            </td>
+            <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
+            <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <div class="card p-6">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-extrabold">${esc(w.noWaran)} <span class="muted text-sm">(${esc(w.waranId)})</span></div>
+              <div class="muted text-sm">${esc(w.tarikhTerima)} · <span class="font-semibold text-slate-900">${esc(w.perihal)}</span></div>
+            </div>
+            <div class="flex items-center gap-2 noPrint">
+              ${statusPill}
+              <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-4"><div class="muted text-sm">Jumlah Waran</div><div class="text-2xl font-extrabold">${money(w.jumlahWaran)}</div></div>
+            <div class="card p-4"><div class="muted text-sm">Committed</div><div class="text-2xl font-extrabold">${money(w.computed.committed)}</div></div>
+            <div class="card p-4"><div class="muted text-sm">Draft</div><div class="text-2xl font-extrabold">${money(w.computed.draft)}</div></div>
+            <div class="card p-4"><div class="muted text-sm">Available</div><div class="text-2xl font-extrabold">${money(w.computed.available)}</div></div>
+          </div>
+
+          <div class="mt-3">
+            <div class="muted text-xs mb-1">Utilization</div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div class="bg-blue-500 h-2" style="width:${w.computed.utilizationPct}%;"></div>
+            </div>
+            <div class="muted text-xs mt-1 text-right">${w.computed.utilizationPct}%</div>
+          </div>
+
+          <div class="mt-6">
+            <div class="text-lg font-bold">Belanja</div>
+            ${ (w.belanja||[]).length ? `
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="border-b">
+                      <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted noPrint">Status (edit)</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted noPrint"></th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
+                    </tr>
+                  </thead>
+                  <tbody>${belanjaRows}</tbody>
+                </table>
+              </div>
+            ` : `<div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>`}
+          </div>
+
+          <div class="mt-6 noPrint ${closed ? 'disabledWrap' : ''}">
+            <div class="card p-5">
+              <div class="font-bold">Tambah Belanja (waran ini)</div>
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-3">
+                <input class="input" placeholder="Perihal" data-add-perihal="${esc(w.waranId)}"/>
+                <input class="input" placeholder="Amaun" inputmode="decimal" data-add-amaun="${esc(w.waranId)}"/>
+                <select class="input" data-add-status="${esc(w.waranId)}">
+                  <option>KERTAS KERJA</option>
+                  <option>HANTAR PERMOHONAN</option>
+                  <option>SELESAI</option>
+                  <option>BATAL</option>
+                </select>
+                <input class="input" placeholder="No Dokumen" data-add-doc="${esc(w.waranId)}"/>
+                <input class="input" placeholder="Payee" data-add-payee="${esc(w.waranId)}"/>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <input class="input" type="date" data-add-tarikh="${esc(w.waranId)}"/>
+                <input class="input" placeholder="Catatan (optional)" data-add-catatan="${esc(w.waranId)}"/>
+              </div>
+              <div class="flex items-center gap-3 mt-4">
+                <button class="btn btn-primary" data-add="${esc(w.waranId)}">Tambah Belanja</button>
+                ${closed ? `<div class="text-red-600 font-semibold text-sm">Waran CLOSED — belanja disabled.</div>` : ``}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    bindDynamicActions();
+  }
+
+  function bindDynamicActions(){
+    document.querySelectorAll("[data-upd]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const belanjaId = btn.getAttribute("data-upd");
+        const sel = document.querySelector(`select[data-belanja="${CSS.escape(belanjaId)}"]`);
+        const statusBelanja = sel ? sel.value : "";
+        try{
+          await api("updateBelanjaStatus", { token: state.token, belanjaId, statusBelanja });
+          await refresh();
+        }catch(e){
+          alert("Gagal update: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-add]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const waranId = btn.getAttribute("data-add");
+        const get = (q)=>document.querySelector(q);
+        const perihal = get(`[data-add-perihal="${CSS.escape(waranId)}"]`).value.trim();
+        const amaun = get(`[data-add-amaun="${CSS.escape(waranId)}"]`).value.trim();
+        const statusBelanja = get(`[data-add-status="${CSS.escape(waranId)}"]`).value;
+        const noDokumen = get(`[data-add-doc="${CSS.escape(waranId)}"]`).value.trim();
+        const payee = get(`[data-add-payee="${CSS.escape(waranId)}"]`).value.trim();
+        const tarikh = get(`[data-add-tarikh="${CSS.escape(waranId)}"]`).value;
+        const catatan = get(`[data-add-catatan="${CSS.escape(waranId)}"]`).value.trim();
+
+        if(!perihal || !amaun || !tarikh){
+          alert("Perihal + Amaun + Tarikh wajib isi.");
+          return;
+        }
+
+        const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
+        try{
+          await api("addBelanja", {
+            token: state.token,
+            waranId,
+            noWaran: w.noWaran,
+            tarikh,
+            perihal,
+            amaun,
+            statusBelanja,
+            noDokumen,
+            payee,
+            catatan
+          });
+          await refresh();
+        }catch(e){
+          alert("Gagal tambah belanja: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-pdf]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const waranId = btn.getAttribute("data-pdf");
+        try{
+          const r = await api("exportWaranPdf", { token: state.token, waranId });
+          window.open(r.url, "_blank");
+        }catch(e){
+          alert("Gagal export PDF: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+  }
+
+  async function refresh(){
+    const year = el("yearFilter").value || "";
+    const q = el("q").value.trim();
+    const data = await api("getAll", { token: state.token, year, q });
+    state.data = data;
+    render();
+  }
 
   function initGoogle(){
     google.accounts.id.initialize({
       client_id: CLIENT_ID,
-      callback: function(response){
-        console.log("Login success", response);
+      callback: async (resp)=>{
+        setAuthError("");
+        try{
+          const r = await api("login", { id_token: resp.credential });
+          state.token = r.token;
+          localStorage.setItem("LA_TOKEN", state.token);
+          state.profile = r.profile;
+
+          el("authCard").classList.add("hidden");
+          el("app").classList.remove("hidden");
+          renderUserBox();
+          await refresh();
+        }catch(e){
+          setAuthError("Login gagal: " + (e.error || JSON.stringify(e)));
+        }
       }
     });
 
     google.accounts.id.renderButton(
       document.getElementById("googleBtn"),
-      {
-        theme:"outline",
-        size:"large",
-        shape:"pill",
-        width:320
-      }
+      { theme:"outline", size:"large", text:"signin_with", shape:"pill", width:320 }
     );
   }
 
-  // Wait until Google loaded
-  const wait = setInterval(()=>{
-    if(window.google && google.accounts && google.accounts.id){
-      clearInterval(wait);
-      initGoogle();
-    }
-  },100);
-</script>
+  async function bootstrap(){
+    el("btnRefresh").onclick = refresh;
+    el("btnSearch").onclick = refresh;
+    el("btnClear").onclick = ()=>{
+      el("q").value = "";
+      el("yearFilter").value = "";
+      refresh();
+    };
+    el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
+    el("yearFilter").addEventListener("change", refresh);
 
+    el("btnAddWaran").onclick = async ()=>{
+      const noWaran = el("w_noWaran").value.trim();
+      const tarikhTerima = el("w_tarikh").value;
+      const perihal = el("w_perihal").value.trim();
+      const jumlahWaran = el("w_jumlah").value.trim();
+      const tahun = el("w_tahun").value.trim();
+      const statusWaran = el("w_status").value;
+      const catatan = el("w_catatan").value.trim();
+
+      if(!noWaran || !tarikhTerima || !perihal || !jumlahWaran){
+        el("addWaranMsg").textContent = "NoWaran + Tarikh + Perihal + Jumlah wajib isi.";
+        return;
+      }
+
+      try{
+        el("addWaranMsg").textContent = "Saving...";
+        await api("addWaran", { token: state.token, noWaran, tarikhTerima, perihal, jumlahWaran, tahun, statusWaran, catatan });
+        el("addWaranMsg").textContent = "Waran ditambah.";
+        el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
+        await refresh();
+      }catch(e){
+        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
+      }
+    };
+
+    if(state.token){
+      try{
+        const me = await api("me", { token: state.token });
+        state.profile = me;
+
+        el("authCard").classList.add("hidden");
+        el("app").classList.remove("hidden");
+        renderUserBox();
+        await refresh();
+        return;
+      }catch(e){
+        localStorage.removeItem("LA_TOKEN");
+        state.token="";
+      }
+    }
+
+    const wait = setInterval(()=>{
+      if (window.google && google.accounts && google.accounts.id){
+        clearInterval(wait);
+        initGoogle();
+      }
+    }, 80);
+  }
+
+  bootstrap();
+</script>
 </body>
 </html>
