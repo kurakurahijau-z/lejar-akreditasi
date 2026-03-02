@@ -22,27 +22,20 @@
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
 
-    /* Print rules: footer ikut flow & page-break terkawal */
+    /* Print rules */
     @media print{
       body{ background:#fff !important; }
       .noPrint{ display:none !important; }
       .card{ box-shadow:none !important; }
 
-      /* Penting: jangan paksa footer ke page seterusnya */
-      #printFooter{
-        page-break-before: auto;
-        page-break-after: auto;
-        page-break-inside: avoid;
-        margin-top: 14px;
-        padding-top: 8px;
-        border-top: 1px solid #e5e7eb;
-      }
-
-      /* Pecahan jadual lebih kemas masa print */
+      /* table break better */
       table{ page-break-inside:auto; }
       tr{ page-break-inside:avoid; page-break-after:auto; }
 
-      /* Ada kes wrapper overflow tolak layout masa print — buang overflow masa print */
+      /* IMPORTANT: keep tfoot at end (not repeated each page) */
+      tfoot{ display: table-row-group; }
+
+      /* remove overflow wrapper behaviour in print */
       .printNoOverflow{ overflow: visible !important; }
     }
   </style>
@@ -50,7 +43,6 @@
 
 <body class="min-h-screen">
   <div class="max-w-6xl mx-auto px-4 py-10">
-    <!-- Header -->
     <div class="card p-7">
       <div class="flex items-start justify-between gap-4">
         <div>
@@ -160,19 +152,12 @@
 
         <div id="waranList" class="mt-4 flex flex-col gap-6"></div>
       </div>
-
-      <!-- Print Footer (ikut flow content, bukan fixed) -->
-      <div id="printFooter" class="mt-6 text-center text-xs text-slate-500">
-        © <span id="yearNow"></span> kurakurahijau.com | Lejar Akreditasi
-      </div>
     </div>
   </div>
 
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
-
-  // ✅ Apps Script terkini kau
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
   // ================== STATE ==================
@@ -216,10 +201,7 @@
 
   function renderUserBox(){
     const box = el("userBox");
-    if (!state.profile){
-      box.innerHTML = "";
-      return;
-    }
+    if (!state.profile){ box.innerHTML = ""; return; }
     box.innerHTML = `
       <div class="text-sm muted">${esc(state.profile.email)}</div>
       <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
@@ -259,6 +241,8 @@
     const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
     el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
+    const yearText = String(new Date().getFullYear());
+
     el("waranList").innerHTML = (data.waran||[]).map(w=>{
       const closed = String(w.statusWaran||"").toUpperCase()==="CLOSED";
       const statusPill = closed
@@ -273,7 +257,6 @@
           </select>
           <div class="mini hidden print:block">${esc(b.statusBelanja||"")}</div>
         `;
-
         return `
           <tr class="border-b">
             <td class="py-3 pr-3 align-top text-sm">
@@ -294,6 +277,17 @@
           </tr>
         `;
       }).join("");
+
+      // Footer as table tfoot (MOST stable for print)
+      const tfoot = `
+        <tfoot>
+          <tr>
+            <td colspan="7" class="py-2 pr-3 text-xs text-slate-500" style="border-top:1px solid #e5e7eb;">
+              © ${esc(yearText)} kurakurahijau.com | Lejar Akreditasi
+            </td>
+          </tr>
+        </tfoot>
+      `;
 
       return `
         <div class="card p-6">
@@ -345,9 +339,15 @@
                     </tr>
                   </thead>
                   <tbody>${belanjaRows}</tbody>
+                  ${tfoot}
                 </table>
               </div>
-            ` : `<div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>`}
+            ` : `
+              <div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>
+              <div class="mt-3 text-xs text-slate-500">
+                © ${esc(yearText)} kurakurahijau.com | Lejar Akreditasi
+              </div>
+            `}
           </div>
 
           <div class="mt-6 noPrint ${closed ? 'disabledWrap' : ''}">
@@ -485,10 +485,6 @@
   }
 
   async function bootstrap(){
-    // set tahun footer (auto)
-    const yEl = document.getElementById("yearNow");
-    if (yEl) yEl.textContent = new Date().getFullYear();
-
     el("btnRefresh").onclick = refresh;
     el("btnSearch").onclick = refresh;
     el("btnClear").onclick = ()=>{
