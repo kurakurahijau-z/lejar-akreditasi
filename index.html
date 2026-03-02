@@ -22,29 +22,28 @@
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
 
-    /* Footer */
-    .siteFooter{
-      margin-top: 28px;
-      padding: 18px 0 8px;
-      text-align:center;
-      color:#64748b;
-      font-size: 12px;
-    }
-
-    /* Print rules: footer ikut flow (tak fixed) supaya tak pergi page 2 */
+    /* Print rules: footer ikut flow & page-break terkawal */
     @media print{
       body{ background:#fff !important; }
       .noPrint{ display:none !important; }
       .card{ box-shadow:none !important; }
-      .siteFooter{
-        position: static !important;
-        border-top: 1px solid #e5e7eb;
-        background: transparent;
-        padding: 10px 0 0;
-        margin-top: 12px;
+
+      /* Penting: jangan paksa footer ke page seterusnya */
+      #printFooter{
+        page-break-before: auto;
+        page-break-after: auto;
         page-break-inside: avoid;
+        margin-top: 14px;
+        padding-top: 8px;
+        border-top: 1px solid #e5e7eb;
       }
-      body{ padding-bottom: 0 !important; }
+
+      /* Pecahan jadual lebih kemas masa print */
+      table{ page-break-inside:auto; }
+      tr{ page-break-inside:avoid; page-break-after:auto; }
+
+      /* Ada kes wrapper overflow tolak layout masa print — buang overflow masa print */
+      .printNoOverflow{ overflow: visible !important; }
     }
   </style>
 </head>
@@ -161,10 +160,12 @@
 
         <div id="waranList" class="mt-4 flex flex-col gap-6"></div>
       </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="siteFooter" id="siteFooter"></div>
+      <!-- Print Footer (ikut flow content, bukan fixed) -->
+      <div id="printFooter" class="mt-6 text-center text-xs text-slate-500">
+        © <span id="yearNow"></span> kurakurahijau.com | Lejar Akreditasi
+      </div>
+    </div>
   </div>
 
 <script>
@@ -270,7 +271,7 @@
           <select class="input noPrint" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
-          <div class="mini printOnly hidden">${esc(b.statusBelanja||"")}</div>
+          <div class="mini hidden print:block">${esc(b.statusBelanja||"")}</div>
         `;
 
         return `
@@ -301,10 +302,12 @@
               <div class="text-lg font-extrabold">${esc(w.noWaran)} <span class="muted text-sm">(${esc(w.waranId)})</span></div>
               <div class="muted text-sm">${esc(w.tarikhTerima)} · <span class="font-semibold text-slate-900">${esc(w.perihal)}</span></div>
             </div>
+
             <div class="flex items-center gap-2 noPrint">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
             </div>
+
             <div class="hidden print:block">
               ${statusPill}
             </div>
@@ -328,7 +331,7 @@
           <div class="mt-6">
             <div class="text-lg font-bold">Belanja</div>
             ${ (w.belanja||[]).length ? `
-              <div class="mt-3 overflow-x-auto">
+              <div class="mt-3 overflow-x-auto printNoOverflow">
                 <table class="w-full text-left">
                   <thead>
                     <tr class="border-b">
@@ -453,11 +456,6 @@
     render();
   }
 
-  function setFooter(){
-    const y = new Date().getFullYear();
-    el("siteFooter").textContent = `© ${y} kurakurahijau.com | Lejar Akreditasi`;
-  }
-
   // ================== Google Login ==================
   function initGoogle(){
     google.accounts.id.initialize({
@@ -487,7 +485,9 @@
   }
 
   async function bootstrap(){
-    setFooter();
+    // set tahun footer (auto)
+    const yEl = document.getElementById("yearNow");
+    if (yEl) yEl.textContent = new Date().getFullYear();
 
     el("btnRefresh").onclick = refresh;
     el("btnSearch").onclick = refresh;
@@ -524,6 +524,7 @@
       }
     };
 
+    // auto-login
     if(state.token){
       try{
         const me = await api("me", { token: state.token });
