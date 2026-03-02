@@ -5,24 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Lejar Akreditasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
     body{ background: linear-gradient(180deg,#f6f8ff,#f4fbff); }
     .card{ border:1px solid rgba(15,23,42,.08); border-radius:18px; background:#fff; box-shadow: 0 10px 25px rgba(2,6,23,.05); }
     .pill{ border:1px solid rgba(15,23,42,.08); border-radius:999px; padding:2px 10px; font-size:12px; }
-    .btn{ border-radius: 12px; padding: 10px 14px; font-weight: 700; }
+    .btn{ border-radius: 12px; padding: 10px 14px; font-weight: 800; }
     .btn-primary{ background:#2563eb; color:#fff; }
     .btn-dark{ background:#0f172a; color:#fff; }
     .btn-outline{ border:1px solid rgba(15,23,42,.14); background:#fff; color:#0f172a; }
-    .btn-danger{ background:#ef4444; color:#fff; }
+    .btn-danger{ background:#dc2626; color:#fff; }
     .input{ border:1px solid rgba(15,23,42,.12); border-radius:12px; padding:10px 12px; width:100%; }
     .muted{ color:#64748b; }
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
-    .table th{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#64748b; }
+    .modalBack{ position:fixed; inset:0; background:rgba(2,6,23,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:999; }
+    .modal{ width:min(720px,100%); }
   </style>
 </head>
 
@@ -32,9 +31,7 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
-          <p class="muted mt-2">
-            Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.
-          </p>
+          <p class="muted mt-2">Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.</p>
         </div>
         <div id="userBox" class="text-right"></div>
       </div>
@@ -140,18 +137,72 @@
     </div>
   </div>
 
-<script>
-  // ===== Error trap (supaya tak senyap) =====
-  window.addEventListener("error", (ev)=>{
-    try{
-      const msg = (ev && ev.message) ? ev.message : "Unknown JS error";
-      const elErr = document.getElementById("authErr");
-      if (elErr) elErr.textContent = "JS Error: " + msg;
-    }catch(e){}
-  });
+  <!-- Modal: Edit Waran -->
+  <div id="modalWaranBack" class="modalBack">
+    <div class="modal card p-6">
+      <div class="flex items-center justify-between">
+        <div class="text-lg font-extrabold">Edit Waran</div>
+        <button class="btn btn-outline" id="btnCloseWaranModal">Tutup</button>
+      </div>
 
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <input id="mw_waranId" class="input" placeholder="WaranID" disabled />
+        <input id="mw_noWaran" class="input" placeholder="No Waran" />
+        <input id="mw_tarikhTerima" type="date" class="input" />
+        <input id="mw_tahun" class="input" placeholder="Tahun" />
+        <input id="mw_perihal" class="input md:col-span-2" placeholder="Perihal" />
+        <input id="mw_jumlahWaran" class="input" placeholder="Jumlah (RM)" inputmode="decimal" />
+        <select id="mw_statusWaran" class="input">
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+        <input id="mw_catatan" class="input md:col-span-2" placeholder="Catatan" />
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button class="btn btn-primary" id="btnSaveWaran">Save</button>
+        <div class="muted text-sm" id="mw_msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Belanja -->
+  <div id="modalBelanjaBack" class="modalBack">
+    <div class="modal card p-6">
+      <div class="flex items-center justify-between">
+        <div class="text-lg font-extrabold">Edit Belanja</div>
+        <button class="btn btn-outline" id="btnCloseBelanjaModal">Tutup</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <input id="mb_belanjaId" class="input" placeholder="BelanjaID" disabled />
+        <input id="mb_waranId" class="input" placeholder="WaranID" disabled />
+        <input id="mb_tarikh" type="date" class="input" />
+        <input id="mb_amaun" class="input" placeholder="Amaun" inputmode="decimal" />
+        <input id="mb_perihal" class="input md:col-span-2" placeholder="Perihal" />
+        <select id="mb_status" class="input">
+          <option>KERTAS KERJA</option>
+          <option>HANTAR PERMOHONAN</option>
+          <option>SELESAI</option>
+          <option>BATAL</option>
+        </select>
+        <input id="mb_noDokumen" class="input" placeholder="No Dokumen" />
+        <input id="mb_payee" class="input md:col-span-2" placeholder="Payee" />
+        <input id="mb_catatan" class="input md:col-span-2" placeholder="Catatan" />
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button class="btn btn-primary" id="btnSaveBelanja">Save</button>
+        <div class="muted text-sm" id="mb_msg"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
+
+  // ✅ WAJIB tukar kepada URL deploy TERBARU
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
   // ================== STATE ==================
@@ -159,7 +210,8 @@
     token: localStorage.getItem("LA_TOKEN") || "",
     profile: null,
     data: null,
-    editRow: null
+    modalWaran: null,   // store waran object
+    modalBelanja: null  // store belanja object
   };
 
   // ================== JSONP helper ==================
@@ -191,16 +243,19 @@
   const el = (id)=>document.getElementById(id);
   const money = (n)=>"RM " + (Number(n||0)).toLocaleString("en-MY", {minimumFractionDigits:0, maximumFractionDigits:0});
   const esc = (s)=>String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+
   function setAuthError(msg){ el("authErr").textContent = msg || ""; }
 
   function renderUserBox(){
     const box = el("userBox");
     if (!state.profile){ box.innerHTML = ""; return; }
+
     box.innerHTML = `
       <div class="text-sm muted">${esc(state.profile.email)}</div>
       <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
       <button class="btn mt-2 btn-outline" id="btnLogout">Logout</button>
     `;
+
     el("btnLogout").onclick = ()=>{
       localStorage.removeItem("LA_TOKEN");
       state.token = "";
@@ -242,69 +297,35 @@
         : `<span class="pill bg-emerald-50 text-emerald-700 font-bold">ACTIVE</span>`;
 
       const belanjaRows = (w.belanja||[]).map(b=>{
-        const isEditing = (state.editRow === b.belanjaId);
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
-
-        const statusSelectView = `
-          <select class="input" data-belanja-status="${esc(b.belanjaId)}" ${closed?'disabled':''}>
+        const select = `
+          <select class="input" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
         `;
-        const statusSelectEdit = `
-          <select class="input" data-edit-status="${esc(b.belanjaId)}">
-            ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
-          </select>
+        return `
+          <tr class="border-b">
+            <td class="py-3 pr-3 align-top text-sm">
+              <div class="font-bold">${esc(b.belanjaId)}</div>
+              <div class="muted text-xs">${esc(b.tarikh||"")}</div>
+            </td>
+            <td class="py-3 pr-3 align-top text-sm">
+              <div class="font-semibold">${esc(b.perihal||"")}</div>
+              <div class="muted text-xs">${esc(b.catatan||"")}</div>
+            </td>
+            <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
+            <td class="py-3 pr-3 align-top">${select}</td>
+            <td class="py-3 pr-3 align-top">
+              <div class="flex flex-col gap-2">
+                <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
+                <button class="btn btn-outline" data-bedit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
+                <button class="btn btn-danger" data-bdel="${esc(b.belanjaId)}" ${closed?'disabled':''}>Delete</button>
+              </div>
+            </td>
+            <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
+            <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
+          </tr>
         `;
-
-        const viewCells = `
-          <td class="py-3 pr-3 align-top text-sm">
-            <div class="font-bold">${esc(b.belanjaId)}</div>
-            <div class="muted text-xs">${esc(b.tarikh||"")}</div>
-          </td>
-          <td class="py-3 pr-3 align-top text-sm">
-            <div class="font-semibold">${esc(b.perihal||"")}</div>
-            <div class="muted text-xs">${esc(b.catatan||"")}</div>
-          </td>
-          <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
-          <td class="py-3 pr-3 align-top">${statusSelectView}</td>
-          <td class="py-3 pr-3 align-top">
-            <div class="flex gap-2 flex-wrap">
-              <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
-              <button class="btn btn-outline" data-edit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
-            </div>
-          </td>
-          <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
-          <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
-        `;
-
-        const editCells = `
-          <td class="py-3 pr-3 align-top text-sm">
-            <div class="font-bold">${esc(b.belanjaId)}</div>
-            <input type="date" class="input mt-2" value="${esc(b.tarikh||"")}" data-edit-tarikh="${esc(b.belanjaId)}">
-          </td>
-          <td class="py-3 pr-3 align-top text-sm">
-            <input class="input" value="${esc(b.perihal||"")}" data-edit-perihal="${esc(b.belanjaId)}" placeholder="Perihal">
-            <input class="input mt-2" value="${esc(b.catatan||"")}" data-edit-catatan="${esc(b.belanjaId)}" placeholder="Catatan (optional)">
-          </td>
-          <td class="py-3 pr-3 align-top text-sm font-bold">
-            <input class="input" value="${esc(b.amaun||"")}" data-edit-amaun="${esc(b.belanjaId)}" inputmode="decimal" placeholder="Amaun">
-          </td>
-          <td class="py-3 pr-3 align-top">${statusSelectEdit}</td>
-          <td class="py-3 pr-3 align-top">
-            <div class="flex gap-2 flex-wrap">
-              <button class="btn btn-primary" data-save="${esc(b.belanjaId)}">Save</button>
-              <button class="btn btn-outline" data-cancel="${esc(b.belanjaId)}">Cancel</button>
-            </div>
-          </td>
-          <td class="py-3 pr-3 align-top text-sm">
-            <input class="input" value="${esc(b.noDokumen||"")}" data-edit-doc="${esc(b.belanjaId)}" placeholder="No Dokumen">
-          </td>
-          <td class="py-3 pr-3 align-top text-sm">
-            <input class="input" value="${esc(b.payee||"")}" data-edit-payee="${esc(b.belanjaId)}" placeholder="Payee">
-          </td>
-        `;
-
-        return `<tr class="border-b">${isEditing ? editCells : viewCells}</tr>`;
       }).join("");
 
       return `
@@ -314,9 +335,11 @@
               <div class="text-lg font-extrabold">${esc(w.noWaran)} <span class="muted text-sm">(${esc(w.waranId)})</span></div>
               <div class="muted text-sm">${esc(w.tarikhTerima)} · <span class="font-semibold text-slate-900">${esc(w.perihal)}</span></div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap justify-end">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
+              ${isAdmin ? `<button class="btn btn-outline" data-wedit="${esc(w.waranId)}">Edit</button>` : ``}
+              ${isAdmin ? `<button class="btn btn-danger" data-wdel="${esc(w.waranId)}">Delete</button>` : ``}
             </div>
           </div>
 
@@ -327,20 +350,28 @@
             <div class="card p-4"><div class="muted text-sm">Available</div><div class="text-2xl font-extrabold">${money(w.computed.available)}</div></div>
           </div>
 
+          <div class="mt-3">
+            <div class="muted text-xs mb-1">Utilization</div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div class="bg-blue-500 h-2" style="width:${w.computed.utilizationPct}%;"></div>
+            </div>
+            <div class="muted text-xs mt-1 text-right">${w.computed.utilizationPct}%</div>
+          </div>
+
           <div class="mt-6">
             <div class="text-lg font-bold">Belanja</div>
             ${ (w.belanja||[]).length ? `
               <div class="mt-3 overflow-x-auto">
-                <table class="w-full text-left table">
+                <table class="w-full text-left">
                   <thead>
                     <tr class="border-b">
-                      <th class="py-2 pr-3">BelanjaID / Tarikh</th>
-                      <th class="py-2 pr-3">Perihal / Catatan</th>
-                      <th class="py-2 pr-3">Amaun</th>
-                      <th class="py-2 pr-3">Status</th>
-                      <th class="py-2 pr-3">Tindakan</th>
-                      <th class="py-2 pr-3">No Dokumen</th>
-                      <th class="py-2 pr-3">Payee</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Status (edit)</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Tindakan</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
                     </tr>
                   </thead>
                   <tbody>${belanjaRows}</tbody>
@@ -382,64 +413,54 @@
     bindDynamicActions();
   }
 
+  // ================== Modals ==================
+  function openWaranModal(w){
+    state.modalWaran = w;
+    el("mw_msg").textContent = "";
+    el("mw_waranId").value = w.waranId;
+    el("mw_noWaran").value = w.noWaran || "";
+    el("mw_tarikhTerima").value = w.tarikhTerima || "";
+    el("mw_perihal").value = w.perihal || "";
+    el("mw_jumlahWaran").value = (w.jumlahWaran ?? "").toString();
+    el("mw_tahun").value = w.tahun || "";
+    el("mw_statusWaran").value = (String(w.statusWaran||"ACTIVE").toUpperCase()==="CLOSED") ? "CLOSED" : "ACTIVE";
+    el("mw_catatan").value = w.catatan || "";
+    el("modalWaranBack").style.display = "flex";
+  }
+  function closeWaranModal(){ el("modalWaranBack").style.display = "none"; state.modalWaran=null; }
+
+  function openBelanjaModal(waranId, b){
+    state.modalBelanja = { waranId, b };
+    el("mb_msg").textContent = "";
+    el("mb_belanjaId").value = b.belanjaId;
+    el("mb_waranId").value = waranId;
+    el("mb_tarikh").value = b.tarikh || "";
+    el("mb_perihal").value = b.perihal || "";
+    el("mb_amaun").value = (b.amaun ?? "").toString();
+    el("mb_status").value = (b.statusBelanja || "KERTAS KERJA").toUpperCase();
+    el("mb_noDokumen").value = b.noDokumen || "";
+    el("mb_payee").value = b.payee || "";
+    el("mb_catatan").value = b.catatan || "";
+    el("modalBelanjaBack").style.display = "flex";
+  }
+  function closeBelanjaModal(){ el("modalBelanjaBack").style.display = "none"; state.modalBelanja=null; }
+
+  el("btnCloseWaranModal").onclick = closeWaranModal;
+  el("btnCloseBelanjaModal").onclick = closeBelanjaModal;
+
+  // ================== Bind dynamic actions ==================
   function bindDynamicActions(){
     // Update status belanja
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
-        const sel = document.querySelector(`select[data-belanja-status="${CSS.escape(belanjaId)}"]`);
+        const sel = document.querySelector(`select[data-belanja="${CSS.escape(belanjaId)}"]`);
         const statusBelanja = sel ? sel.value : "";
         try{
           await api("updateBelanjaStatus", { token: state.token, belanjaId, statusBelanja });
           await refresh();
         }catch(e){
           alert("Gagal update: " + (e.error || JSON.stringify(e)));
-        }
-      };
-    });
-
-    // Enter edit mode
-    document.querySelectorAll("[data-edit]").forEach(btn=>{
-      btn.onclick = ()=>{
-        const belanjaId = btn.getAttribute("data-edit");
-        state.editRow = belanjaId;
-        render();
-      };
-    });
-
-    // Cancel edit
-    document.querySelectorAll("[data-cancel]").forEach(btn=>{
-      btn.onclick = ()=>{
-        state.editRow = null;
-        render();
-      };
-    });
-
-    // Save edit (calls editBelanja)
-    document.querySelectorAll("[data-save]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const belanjaId = btn.getAttribute("data-save");
-        const q = (sel)=>document.querySelector(sel);
-
-        const tarikh = q(`[data-edit-tarikh="${CSS.escape(belanjaId)}"]`)?.value || "";
-        const perihal = q(`[data-edit-perihal="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
-        const amaun = q(`[data-edit-amaun="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
-        const statusBelanja = q(`[data-edit-status="${CSS.escape(belanjaId)}"]`)?.value || "";
-        const noDokumen = q(`[data-edit-doc="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
-        const payee = q(`[data-edit-payee="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
-        const catatan = q(`[data-edit-catatan="${CSS.escape(belanjaId)}"]`)?.value?.trim() || "";
-
-        if(!tarikh || !perihal || !amaun){
-          alert("Tarikh + Perihal + Amaun wajib isi masa Save.");
-          return;
-        }
-
-        try{
-          await api("editBelanja", { token: state.token, belanjaId, tarikh, perihal, amaun, statusBelanja, noDokumen, payee, catatan });
-          state.editRow = null;
-          await refresh();
-        }catch(e){
-          alert("Gagal edit: " + (e.error || JSON.stringify(e)));
         }
       };
     });
@@ -495,7 +516,112 @@
         }
       };
     });
+
+    // Edit waran (admin)
+    document.querySelectorAll("[data-wedit]").forEach(btn=>{
+      btn.onclick = ()=>{
+        const waranId = btn.getAttribute("data-wedit");
+        const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
+        if(!w) return alert("Waran not found");
+        openWaranModal(w);
+      };
+    });
+
+    // Delete waran (admin)
+    document.querySelectorAll("[data-wdel]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const waranId = btn.getAttribute("data-wdel");
+        if(!confirm("Confirm delete waran ini? Semua belanja bawah akan delete sekali (soft delete).")) return;
+        try{
+          await api("deleteWaran", { token: state.token, waranId });
+          await refresh();
+        }catch(e){
+          alert("Gagal delete waran: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
+
+    // Edit belanja modal
+    document.querySelectorAll("[data-bedit]").forEach(btn=>{
+      btn.onclick = ()=>{
+        const belanjaId = btn.getAttribute("data-bedit");
+        // find in data
+        for(const w of (state.data.waran||[])){
+          const b = (w.belanja||[]).find(x=>x.belanjaId===belanjaId);
+          if(b){ openBelanjaModal(w.waranId, b); return; }
+        }
+        alert("Belanja not found");
+      };
+    });
+
+    // Delete belanja
+    document.querySelectorAll("[data-bdel]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const belanjaId = btn.getAttribute("data-bdel");
+        if(!confirm("Confirm delete belanja ini? (soft delete)")) return;
+        try{
+          await api("deleteBelanja", { token: state.token, belanjaId });
+          await refresh();
+        }catch(e){
+          alert("Gagal delete belanja: " + (e.error || JSON.stringify(e)));
+        }
+      };
+    });
   }
+
+  // Save waran modal
+  el("btnSaveWaran").onclick = async ()=>{
+    const waranId = el("mw_waranId").value.trim();
+    const noWaran = el("mw_noWaran").value.trim();
+    const tarikhTerima = el("mw_tarikhTerima").value;
+    const perihal = el("mw_perihal").value.trim();
+    const jumlahWaran = el("mw_jumlahWaran").value.trim();
+    const tahun = el("mw_tahun").value.trim();
+    const statusWaran = el("mw_statusWaran").value;
+    const catatan = el("mw_catatan").value.trim();
+
+    if(!noWaran || !tarikhTerima || !perihal || !jumlahWaran){
+      el("mw_msg").textContent = "NoWaran + Tarikh + Perihal + Jumlah wajib isi.";
+      return;
+    }
+
+    try{
+      el("mw_msg").textContent = "Saving...";
+      await api("editWaran", { token: state.token, waranId, noWaran, tarikhTerima, perihal, jumlahWaran, tahun, statusWaran, catatan });
+      el("mw_msg").textContent = "Saved.";
+      closeWaranModal();
+      await refresh();
+    }catch(e){
+      el("mw_msg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
+    }
+  };
+
+  // Save belanja modal
+  el("btnSaveBelanja").onclick = async ()=>{
+    const belanjaId = el("mb_belanjaId").value.trim();
+    const tarikh = el("mb_tarikh").value;
+    const perihal = el("mb_perihal").value.trim();
+    const amaun = el("mb_amaun").value.trim();
+    const statusBelanja = el("mb_status").value;
+    const noDokumen = el("mb_noDokumen").value.trim();
+    const payee = el("mb_payee").value.trim();
+    const catatan = el("mb_catatan").value.trim();
+
+    if(!tarikh || !perihal || !amaun){
+      el("mb_msg").textContent = "Tarikh + Perihal + Amaun wajib isi.";
+      return;
+    }
+
+    try{
+      el("mb_msg").textContent = "Saving...";
+      await api("editBelanja", { token: state.token, belanjaId, tarikh, perihal, amaun, statusBelanja, noDokumen, payee, catatan });
+      el("mb_msg").textContent = "Saved.";
+      closeBelanjaModal();
+      await refresh();
+    }catch(e){
+      el("mb_msg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
+    }
+  };
 
   async function refresh(){
     const year = el("yearFilter").value || "";
@@ -544,7 +670,7 @@
     el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
     el("yearFilter").addEventListener("change", refresh);
 
-    // admin add waran (takkan crash dah)
+    // admin add waran
     el("btnAddWaran").onclick = async ()=>{
       const noWaran = el("w_noWaran").value.trim();
       const tarikhTerima = el("w_tarikh").value;
@@ -566,7 +692,7 @@
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
-        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
+        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e)));
       }
     };
 
