@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Lejar Akreditasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
@@ -17,26 +15,43 @@
     .btn-primary{ background:#2563eb; color:#fff; }
     .btn-dark{ background:#0f172a; color:#fff; }
     .btn-outline{ border:1px solid rgba(15,23,42,.14); background:#fff; color:#0f172a; }
+    .btn-danger{ background:#dc2626; color:#fff; }
+    .btn-ghost{ background:transparent; border:1px solid rgba(15,23,42,.14); color:#0f172a; }
     .input{ border:1px solid rgba(15,23,42,.12); border-radius:12px; padding:10px 12px; width:100%; }
     .muted{ color:#64748b; }
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
-
-    /* Print rules */
-    @media print{
-      body{ background:#fff !important; }
-      .noPrint{ display:none !important; }
-      .card{ box-shadow:none !important; }
-
-      /* table break better */
-      table{ page-break-inside:auto; }
-      tr{ page-break-inside:avoid; page-break-after:auto; }
-
-      /* IMPORTANT: keep tfoot at end (not repeated each page) */
-      tfoot{ display: table-row-group; }
-
-      /* remove overflow wrapper behaviour in print */
-      .printNoOverflow{ overflow: visible !important; }
+    .kbd { font-size: 12px; border:1px solid rgba(15,23,42,.14); padding:2px 8px; border-radius:999px; background:#fff; }
+    .toast{
+      position: fixed; right: 16px; bottom: 16px; z-index: 60;
+      background:#0f172a; color:#fff; padding: 10px 12px; border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(2,6,23,.25);
+      max-width: 360px;
+    }
+    .toast.hidden{ display:none; }
+    /* Modal */
+    .modalWrap{
+      position: fixed; inset:0; z-index: 70;
+      background: rgba(2,6,23,.45);
+      display:flex; align-items:center; justify-content:center;
+      padding: 16px;
+    }
+    .modalWrap.hidden{ display:none; }
+    .modal{
+      width: 100%; max-width: 520px;
+      border-radius: 18px; background:#fff;
+      box-shadow: 0 20px 60px rgba(2,6,23,.25);
+      border:1px solid rgba(15,23,42,.10);
+      overflow:hidden;
+    }
+    .modalHdr{ padding: 18px 18px 10px; }
+    .modalBody{ padding: 0 18px 18px; }
+    .modalFtr{ padding: 12px 18px 18px; display:flex; gap:10px; justify-content:flex-end; }
+    .dangerBox{
+      border:1px solid rgba(220,38,38,.25);
+      background: rgba(220,38,38,.06);
+      border-radius: 14px;
+      padding: 12px;
     }
   </style>
 </head>
@@ -50,6 +65,12 @@
           <p class="muted mt-2">
             Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.
           </p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="kbd">Search</span>
+            <span class="kbd">Filter Tahun</span>
+            <span class="kbd">Export PDF</span>
+            <span class="kbd">Soft Delete</span>
+          </div>
         </div>
         <div id="userBox" class="text-right"></div>
       </div>
@@ -69,7 +90,7 @@
     <!-- App -->
     <div id="app" class="hidden">
       <!-- Controls -->
-      <div class="card p-6 mt-6 noPrint">
+      <div class="card p-6 mt-6">
         <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
           <div class="flex flex-col md:flex-row gap-3 md:items-center">
             <select id="yearFilter" class="input md:w-44"></select>
@@ -112,7 +133,7 @@
       </div>
 
       <!-- Add waran (admin only) -->
-      <div id="adminAddWaran" class="card p-6 mt-6 hidden noPrint">
+      <div id="adminAddWaran" class="card p-6 mt-6 hidden">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-xl font-bold text-slate-900">Tambah Waran</h2>
@@ -155,6 +176,34 @@
     </div>
   </div>
 
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModalWrap" class="modalWrap hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHdr">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div id="cmTitle" class="text-xl font-extrabold text-slate-900">Confirm</div>
+            <div id="cmSubtitle" class="muted text-sm mt-1">...</div>
+          </div>
+          <button class="btn btn-ghost" id="cmX">Tutup</button>
+        </div>
+      </div>
+      <div class="modalBody">
+        <div class="dangerBox">
+          <div id="cmDesc" class="text-sm text-slate-900"></div>
+          <div class="mini mt-2">Ini soft delete — data masih ada dalam Google Sheet (status jadi <b>DELETED</b>).</div>
+        </div>
+      </div>
+      <div class="modalFtr">
+        <button class="btn btn-outline" id="cmCancel">Batal</button>
+        <button class="btn btn-danger" id="cmOk">Ya, Delete</button>
+      </div>
+    </div>
+  </div>
+
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
@@ -164,7 +213,8 @@
   const state = {
     token: localStorage.getItem("LA_TOKEN") || "",
     profile: null,
-    data: null
+    data: null,
+    confirm: { action: null, payload: null, onDone: null }
   };
 
   // ================== JSONP helper ==================
@@ -199,13 +249,22 @@
 
   function setAuthError(msg){ el("authErr").textContent = msg || ""; }
 
+  function toast(msg, ms=2200){
+    const t = el("toast");
+    t.textContent = msg || "";
+    t.classList.remove("hidden");
+    clearTimeout(toast._to);
+    toast._to = setTimeout(()=>t.classList.add("hidden"), ms);
+  }
+
   function renderUserBox(){
     const box = el("userBox");
     if (!state.profile){ box.innerHTML = ""; return; }
+
     box.innerHTML = `
       <div class="text-sm muted">${esc(state.profile.email)}</div>
       <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
-      <button class="btn mt-2 btn-outline noPrint" id="btnLogout">Logout</button>
+      <button class="btn mt-2 btn-outline" id="btnLogout">Logout</button>
     `;
     el("btnLogout").onclick = ()=>{
       localStorage.removeItem("LA_TOKEN");
@@ -218,10 +277,49 @@
 
   function renderYearFilter(waran){
     const years = new Set();
-    waran.forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
+    (waran||[]).forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
     const list = ["", ...Array.from(years).sort().reverse()];
     el("yearFilter").innerHTML = list.map(y=>`<option value="${esc(y)}">${y?esc(y):"Semua tahun"}</option>`).join("");
   }
+
+  // ================== Confirm Modal ==================
+  function openConfirm({title, subtitle, desc, action, payload, onDone}){
+    el("cmTitle").textContent = title || "Confirm";
+    el("cmSubtitle").textContent = subtitle || "";
+    el("cmDesc").innerHTML = desc || "";
+    state.confirm = { action, payload, onDone };
+    el("confirmModalWrap").classList.remove("hidden");
+  }
+  function closeConfirm(){
+    el("confirmModalWrap").classList.add("hidden");
+    state.confirm = { action:null, payload:null, onDone:null };
+  }
+  el("cmX").onclick = closeConfirm;
+  el("cmCancel").onclick = closeConfirm;
+  el("confirmModalWrap").addEventListener("click",(ev)=>{
+    if (ev.target === el("confirmModalWrap")) closeConfirm();
+  });
+  document.addEventListener("keydown",(ev)=>{
+    if(ev.key==="Escape" && !el("confirmModalWrap").classList.contains("hidden")) closeConfirm();
+  });
+
+  el("cmOk").onclick = async ()=>{
+    const c = state.confirm;
+    if(!c.action) return closeConfirm();
+    try{
+      el("cmOk").disabled = true;
+      el("cmOk").textContent = "Deleting...";
+      await api(c.action, c.payload);
+      toast("Deleted (soft) ✅");
+      closeConfirm();
+      if (typeof c.onDone === "function") await c.onDone();
+    }catch(e){
+      alert("Gagal delete: " + (e.error || JSON.stringify(e)));
+    }finally{
+      el("cmOk").disabled = false;
+      el("cmOk").textContent = "Ya, Delete";
+    }
+  };
 
   // ================== Render main ==================
   function render(){
@@ -241,22 +339,26 @@
     const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
     el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
-    const yearText = String(new Date().getFullYear());
-
     el("waranList").innerHTML = (data.waran||[]).map(w=>{
       const closed = String(w.statusWaran||"").toUpperCase()==="CLOSED";
+
       const statusPill = closed
         ? `<span class="pill bg-slate-100 text-slate-700 font-bold">CLOSED</span>`
         : `<span class="pill bg-emerald-50 text-emerald-700 font-bold">ACTIVE</span>`;
 
+      const topActions = `
+        <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
+        ${isAdmin ? `<button class="btn btn-danger" data-del-waran="${esc(w.waranId)}" ${closed?'disabled':''} title="Soft delete waran">Delete</button>` : ``}
+      `;
+
       const belanjaRows = (w.belanja||[]).map(b=>{
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
         const select = `
-          <select class="input noPrint" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
+          <select class="input" data-belanja="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
-          <div class="mini hidden print:block">${esc(b.statusBelanja||"")}</div>
         `;
+
         return `
           <tr class="border-b">
             <td class="py-3 pr-3 align-top text-sm">
@@ -269,25 +371,15 @@
             </td>
             <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
             <td class="py-3 pr-3 align-top">${select}</td>
-            <td class="py-3 pr-3 align-top noPrint">
+            <td class="py-3 pr-3 align-top flex flex-wrap gap-2">
               <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
+              <button class="btn btn-danger" data-del-belanja="${esc(b.belanjaId)}" data-wid="${esc(w.waranId)}" ${closed?'disabled':''} title="Soft delete belanja">Delete</button>
             </td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.payee||"")}</td>
           </tr>
         `;
       }).join("");
-
-      // Footer as table tfoot (MOST stable for print)
-      const tfoot = `
-        <tfoot>
-          <tr>
-            <td colspan="7" class="py-2 pr-3 text-xs text-slate-500" style="border-top:1px solid #e5e7eb;">
-              © ${esc(yearText)} kurakurahijau.com | Lejar Akreditasi
-            </td>
-          </tr>
-        </tfoot>
-      `;
 
       return `
         <div class="card p-6">
@@ -296,14 +388,9 @@
               <div class="text-lg font-extrabold">${esc(w.noWaran)} <span class="muted text-sm">(${esc(w.waranId)})</span></div>
               <div class="muted text-sm">${esc(w.tarikhTerima)} · <span class="font-semibold text-slate-900">${esc(w.perihal)}</span></div>
             </div>
-
-            <div class="flex items-center gap-2 noPrint">
+            <div class="flex items-center gap-2">
               ${statusPill}
-              <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
-            </div>
-
-            <div class="hidden print:block">
-              ${statusPill}
+              ${topActions}
             </div>
           </div>
 
@@ -325,32 +412,26 @@
           <div class="mt-6">
             <div class="text-lg font-bold">Belanja</div>
             ${ (w.belanja||[]).length ? `
-              <div class="mt-3 overflow-x-auto printNoOverflow">
+              <div class="mt-3 overflow-x-auto">
                 <table class="w-full text-left">
                   <thead>
                     <tr class="border-b">
                       <th class="py-2 pr-3 text-xs uppercase muted">BelanjaID / Tarikh</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Perihal / Catatan</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Amaun</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted">Status</th>
-                      <th class="py-2 pr-3 text-xs uppercase muted noPrint"></th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Status (edit)</th>
+                      <th class="py-2 pr-3 text-xs uppercase muted">Tindakan</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">No Dokumen</th>
                       <th class="py-2 pr-3 text-xs uppercase muted">Payee</th>
                     </tr>
                   </thead>
                   <tbody>${belanjaRows}</tbody>
-                  ${tfoot}
                 </table>
               </div>
-            ` : `
-              <div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>
-              <div class="mt-3 text-xs text-slate-500">
-                © ${esc(yearText)} kurakurahijau.com | Lejar Akreditasi
-              </div>
-            `}
+            ` : `<div class="muted text-sm mt-2">Belum ada belanja untuk waran ni.</div>`}
           </div>
 
-          <div class="mt-6 noPrint ${closed ? 'disabledWrap' : ''}">
+          <div class="mt-6 ${closed ? 'disabledWrap' : ''}">
             <div class="card p-5">
               <div class="font-bold">Tambah Belanja (waran ini)</div>
               <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-3">
@@ -375,6 +456,7 @@
               </div>
             </div>
           </div>
+
         </div>
       `;
     }).join("");
@@ -383,6 +465,7 @@
   }
 
   function bindDynamicActions(){
+    // Update status belanja
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
@@ -390,6 +473,7 @@
         const statusBelanja = sel ? sel.value : "";
         try{
           await api("updateBelanjaStatus", { token: state.token, belanjaId, statusBelanja });
+          toast("Updated ✅");
           await refresh();
         }catch(e){
           alert("Gagal update: " + (e.error || JSON.stringify(e)));
@@ -397,10 +481,12 @@
       };
     });
 
+    // Add belanja
     document.querySelectorAll("[data-add]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-add");
         const get = (q)=>document.querySelector(q);
+
         const perihal = get(`[data-add-perihal="${CSS.escape(waranId)}"]`).value.trim();
         const amaun = get(`[data-add-amaun="${CSS.escape(waranId)}"]`).value.trim();
         const statusBelanja = get(`[data-add-status="${CSS.escape(waranId)}"]`).value;
@@ -416,6 +502,8 @@
 
         const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
         try{
+          btn.disabled = true;
+          btn.textContent = "Saving...";
           await api("addBelanja", {
             token: state.token,
             waranId,
@@ -428,22 +516,64 @@
             payee,
             catatan
           });
+          toast("Belanja ditambah ✅");
           await refresh();
         }catch(e){
           alert("Gagal tambah belanja: " + (e.error || JSON.stringify(e)));
+        }finally{
+          btn.disabled = false;
+          btn.textContent = "Tambah Belanja";
         }
       };
     });
 
+    // Export PDF
     document.querySelectorAll("[data-pdf]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
         try{
+          btn.disabled = true;
+          btn.textContent = "Generating...";
           const r = await api("exportWaranPdf", { token: state.token, waranId });
           window.open(r.url, "_blank");
         }catch(e){
           alert("Gagal export PDF: " + (e.error || JSON.stringify(e)));
+        }finally{
+          btn.disabled = false;
+          btn.textContent = "Export PDF";
         }
+      };
+    });
+
+    // ✅ Delete Waran (admin)
+    document.querySelectorAll("[data-del-waran]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const waranId = btn.getAttribute("data-del-waran");
+        const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
+        openConfirm({
+          title: "Delete Waran",
+          subtitle: `No Waran: ${w ? w.noWaran : waranId}`,
+          desc: `Kau pasti nak delete (soft) waran ini? <br/><b>Semua belanja bawah waran ini masih kekal dalam sheet</b> — cuma waran akan hilang dari paparan.`,
+          action: "deleteWaran",
+          payload: { token: state.token, waranId },
+          onDone: refresh
+        });
+      };
+    });
+
+    // ✅ Delete Belanja
+    document.querySelectorAll("[data-del-belanja]").forEach(btn=>{
+      btn.onclick = async ()=>{
+        const belanjaId = btn.getAttribute("data-del-belanja");
+        const waranId = btn.getAttribute("data-wid") || "";
+        openConfirm({
+          title: "Delete Belanja",
+          subtitle: `BelanjaID: ${belanjaId}`,
+          desc: `Kau pasti nak delete (soft) rekod belanja ini?`,
+          action: "deleteBelanja",
+          payload: { token: state.token, belanjaId },
+          onDone: refresh
+        });
       };
     });
   }
@@ -495,6 +625,7 @@
     el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
     el("yearFilter").addEventListener("change", refresh);
 
+    // admin add waran
     el("btnAddWaran").onclick = async ()=>{
       const noWaran = el("w_noWaran").value.trim();
       const tarikhTerima = el("w_tarikh").value;
@@ -512,7 +643,7 @@
       try{
         el("addWaranMsg").textContent = "Saving...";
         await api("addWaran", { token: state.token, noWaran, tarikhTerima, perihal, jumlahWaran, tahun, statusWaran, catatan });
-        el("addWaranMsg").textContent = "Waran ditambah.";
+        el("addWaranMsg").textContent = "Waran ditambah ✅";
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
