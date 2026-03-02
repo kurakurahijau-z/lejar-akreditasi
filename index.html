@@ -22,7 +22,6 @@
     .muted{ color:#64748b; }
     .mini{ font-size:12px; color:#64748b; }
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
-    .chip{ border:1px solid rgba(15,23,42,.12); border-radius:999px; padding:6px 10px; font-size:12px; }
     .table th{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#64748b; }
   </style>
 </head>
@@ -142,6 +141,15 @@
   </div>
 
 <script>
+  // ===== Error trap (supaya tak senyap) =====
+  window.addEventListener("error", (ev)=>{
+    try{
+      const msg = (ev && ev.message) ? ev.message : "Unknown JS error";
+      const elErr = document.getElementById("authErr");
+      if (elErr) elErr.textContent = "JS Error: " + msg;
+    }catch(e){}
+  });
+
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
@@ -151,7 +159,7 @@
     token: localStorage.getItem("LA_TOKEN") || "",
     profile: null,
     data: null,
-    editRow: null // belanjaId yang tengah edit (1 at a time)
+    editRow: null
   };
 
   // ================== JSONP helper ==================
@@ -224,7 +232,6 @@
 
     renderYearFilter(data.waran || []);
 
-    // admin section
     const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
     el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
@@ -234,20 +241,15 @@
         ? `<span class="pill bg-slate-100 text-slate-700 font-bold">CLOSED</span>`
         : `<span class="pill bg-emerald-50 text-emerald-700 font-bold">ACTIVE</span>`;
 
-      const delWaranBtn = isAdmin
-        ? `<button class="btn btn-danger" data-del-waran="${esc(w.waranId)}">Delete</button>`
-        : ``;
-
       const belanjaRows = (w.belanja||[]).map(b=>{
         const isEditing = (state.editRow === b.belanjaId);
-
         const opts = ["KERTAS KERJA","HANTAR PERMOHONAN","SELESAI","BATAL"];
+
         const statusSelectView = `
           <select class="input" data-belanja-status="${esc(b.belanjaId)}" ${closed?'disabled':''}>
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
         `;
-
         const statusSelectEdit = `
           <select class="input" data-edit-status="${esc(b.belanjaId)}">
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
@@ -266,10 +268,9 @@
           <td class="py-3 pr-3 align-top text-sm font-bold">${money(b.amaun)}</td>
           <td class="py-3 pr-3 align-top">${statusSelectView}</td>
           <td class="py-3 pr-3 align-top">
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
               <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
               <button class="btn btn-outline" data-edit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
-              <button class="btn btn-danger" data-del="${esc(b.belanjaId)}" ${closed?'disabled':''}>Delete</button>
             </div>
           </td>
           <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
@@ -290,7 +291,7 @@
           </td>
           <td class="py-3 pr-3 align-top">${statusSelectEdit}</td>
           <td class="py-3 pr-3 align-top">
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
               <button class="btn btn-primary" data-save="${esc(b.belanjaId)}">Save</button>
               <button class="btn btn-outline" data-cancel="${esc(b.belanjaId)}">Cancel</button>
             </div>
@@ -303,11 +304,7 @@
           </td>
         `;
 
-        return `
-          <tr class="border-b">
-            ${isEditing ? editCells : viewCells}
-          </tr>
-        `;
+        return `<tr class="border-b">${isEditing ? editCells : viewCells}</tr>`;
       }).join("");
 
       return `
@@ -320,7 +317,6 @@
             <div class="flex items-center gap-2">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
-              ${delWaranBtn}
             </div>
           </div>
 
@@ -329,14 +325,6 @@
             <div class="card p-4"><div class="muted text-sm">Committed</div><div class="text-2xl font-extrabold">${money(w.computed.committed)}</div></div>
             <div class="card p-4"><div class="muted text-sm">Draft</div><div class="text-2xl font-extrabold">${money(w.computed.draft)}</div></div>
             <div class="card p-4"><div class="muted text-sm">Available</div><div class="text-2xl font-extrabold">${money(w.computed.available)}</div></div>
-          </div>
-
-          <div class="mt-3">
-            <div class="muted text-xs mb-1">Utilization</div>
-            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-              <div class="bg-blue-500 h-2" style="width:${w.computed.utilizationPct}%;"></div>
-            </div>
-            <div class="muted text-xs mt-1 text-right">${w.computed.utilizationPct}%</div>
           </div>
 
           <div class="mt-6">
@@ -349,7 +337,7 @@
                       <th class="py-2 pr-3">BelanjaID / Tarikh</th>
                       <th class="py-2 pr-3">Perihal / Catatan</th>
                       <th class="py-2 pr-3">Amaun</th>
-                      <th class="py-2 pr-3">Status (edit)</th>
+                      <th class="py-2 pr-3">Status</th>
                       <th class="py-2 pr-3">Tindakan</th>
                       <th class="py-2 pr-3">No Dokumen</th>
                       <th class="py-2 pr-3">Payee</th>
@@ -427,7 +415,7 @@
       };
     });
 
-    // Save edit
+    // Save edit (calls editBelanja)
     document.querySelectorAll("[data-save]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-save");
@@ -452,36 +440,6 @@
           await refresh();
         }catch(e){
           alert("Gagal edit: " + (e.error || JSON.stringify(e)));
-        }
-      };
-    });
-
-    // Delete belanja
-    document.querySelectorAll("[data-del]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const belanjaId = btn.getAttribute("data-del");
-        if(!confirm(`Confirm delete belanja ${belanjaId}? (soft delete)`)) return;
-        try{
-          await api("deleteBelanja", { token: state.token, belanjaId });
-          state.editRow = null;
-          await refresh();
-        }catch(e){
-          alert("Gagal delete belanja: " + (e.error || JSON.stringify(e)));
-        }
-      };
-    });
-
-    // Delete waran (admin)
-    document.querySelectorAll("[data-del-waran]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const waranId = btn.getAttribute("data-del-waran");
-        if(!confirm(`Confirm delete WARAN ${waranId}? Ini akan delete (soft) semua belanja bawah waran sekali.`)) return;
-        try{
-          await api("deleteWaran", { token: state.token, waranId });
-          state.editRow = null;
-          await refresh();
-        }catch(e){
-          alert("Gagal delete waran: " + (e.error || JSON.stringify(e)));
         }
       };
     });
@@ -586,7 +544,7 @@
     el("q").addEventListener("keydown",(ev)=>{ if(ev.key==="Enter") refresh(); });
     el("yearFilter").addEventListener("change", refresh);
 
-    // admin add waran
+    // admin add waran (takkan crash dah)
     el("btnAddWaran").onclick = async ()=>{
       const noWaran = el("w_noWaran").value.trim();
       const tarikhTerima = el("w_tarikh").value;
@@ -608,7 +566,7 @@
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
-        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e)));
+        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
       }
     };
 
