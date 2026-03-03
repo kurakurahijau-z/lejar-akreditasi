@@ -22,7 +22,6 @@
     .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
     .modalBack{ position:fixed; inset:0; background:rgba(2,6,23,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:999; }
     .modal{ width:min(720px,100%); }
-    .toast{ position:fixed; right:16px; bottom:16px; z-index:9999; display:none; }
   </style>
 </head>
 
@@ -138,14 +137,6 @@
     </div>
   </div>
 
-  <!-- Toast -->
-  <div id="toast" class="toast">
-    <div class="card px-4 py-3">
-      <div id="toastText" class="text-sm font-semibold text-slate-900"></div>
-      <div id="toastSub" class="mini mt-1"></div>
-    </div>
-  </div>
-
   <!-- Modal: Edit Waran -->
   <div id="modalWaranBack" class="modalBack">
     <div class="modal card p-6">
@@ -212,6 +203,9 @@
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
+  // ✅ DELETE DIMANSUHKAN (UI + backend still have endpoints, but we won't call)
+  const DISABLE_DELETE = true;
+
   // ================== STATE ==================
   const state = {
     token: localStorage.getItem("LA_TOKEN") || "",
@@ -221,20 +215,35 @@
     modalBelanja: null
   };
 
-  // ================== Small UI ==================
+  // ================== JSONP helper ==================
+  function b64urlEncode(str){
+    return btoa(unescape(encodeURIComponent(str)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  function api(action, payload){
+    return new Promise((resolve, reject)=>{
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      window[cb] = (resp)=>{
+        try { delete window[cb]; script.remove(); } catch(e){}
+        if (!resp || resp.ok === false) reject(resp || {error:"Unknown error"});
+        else resolve(resp.data);
+      };
+      const data = b64urlEncode(JSON.stringify(payload || {}));
+      const script = document.createElement("script");
+      script.src = `${SCRIPT_URL}?action=${encodeURIComponent(action)}&callback=${encodeURIComponent(cb)}&data=${encodeURIComponent(data)}`;
+      script.onerror = ()=>{
+        try { delete window[cb]; script.remove(); } catch(e){}
+        reject({error:"Failed to load JSONP"});
+      };
+      document.body.appendChild(script);
+    });
+  }
+
+  // ================== UI helpers ==================
   const el = (id)=>document.getElementById(id);
   const money = (n)=>"RM " + (Number(n||0)).toLocaleString("en-MY", {minimumFractionDigits:0, maximumFractionDigits:0});
   const esc = (s)=>String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
-  const isAdmin = ()=> (state.profile && String(state.profile.role).toLowerCase()==="admin");
-
-  function toast(msg, sub=""){
-    el("toastText").textContent = msg || "";
-    el("toastSub").textContent = sub || "";
-    el("toast").style.display = "block";
-    clearTimeout(toast._t);
-    toast._t = setTimeout(()=>{ el("toast").style.display="none"; }, 3500);
-  }
-
   function setAuthError(msg){ el("authErr").textContent = msg || ""; }
 
   function renderUserBox(){
@@ -246,6 +255,7 @@
       <div class="text-xs muted uppercase tracking-wide">${esc(state.profile.role || "")}</div>
       <button class="btn mt-2 btn-outline" id="btnLogout">Logout</button>
     `;
+
     el("btnLogout").onclick = ()=>{
       localStorage.removeItem("LA_TOKEN");
       state.token = "";
@@ -257,68 +267,9 @@
 
   function renderYearFilter(waran){
     const years = new Set();
-    (waran||[]).forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
+    waran.forEach(w=>{ if (w.tahun) years.add(String(w.tahun)); });
     const list = ["", ...Array.from(years).sort().reverse()];
     el("yearFilter").innerHTML = list.map(y=>`<option value="${esc(y)}">${y?esc(y):"Semua tahun"}</option>`).join("");
-  }
-
-  // ================== JSONP helper (more robust) ==================
-  function b64urlEncode(str){
-    return btoa(unescape(encodeURIComponent(str)))
-      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  }
-
-  function api(action, payload){
-    return new Promise((resolve, reject)=>{
-      const cb = "cb_" + Math.random().toString(36).slice(2);
-      const data = b64urlEncode(JSON.stringify(payload || {}));
-
-      // Create script early so callback can reference it safely
-      const script = document.createElement("script");
-
-      let done = false;
-      const cleanup = ()=>{
-        if (done) return;
-        done = true;
-        try { delete window[cb]; } catch(e){}
-        try { script.remove(); } catch(e){}
-      };
-
-      // Timeout: kalau script load tapi callback tak pernah dipanggil (redirect/html)
-      const timer = setTimeout(()=>{
-        cleanup();
-        reject({
-          error: "JSONP timeout / callback tak dipanggil",
-          hint: "Biasanya Apps Script redirect / permission / bukan response JS.",
-          action,
-        });
-      }, 12000);
-
-      window[cb] = (resp)=>{
-        clearTimeout(timer);
-        cleanup();
-        if (!resp || resp.ok === false) reject(resp || {error:"Unknown error"});
-        else resolve(resp.data);
-      };
-
-      const src = `${SCRIPT_URL}?action=${encodeURIComponent(action)}&callback=${encodeURIComponent(cb)}&data=${encodeURIComponent(data)}&_ts=${Date.now()}`;
-      script.src = src;
-
-      script.onload = ()=>{
-        // Kalau load OK tapi callback tak triggered, biar timeout handle.
-      };
-      script.onerror = ()=>{
-        clearTimeout(timer);
-        cleanup();
-        reject({
-          error: "Failed to load JSONP (script.onerror)",
-          action,
-          src
-        });
-      };
-
-      document.body.appendChild(script);
-    });
   }
 
   // ================== Render main ==================
@@ -335,7 +286,9 @@
     el("lastSync").textContent = `Last sync: ${new Date().toLocaleString("ms-MY")}`;
 
     renderYearFilter(data.waran || []);
-    el("adminAddWaran").classList.toggle("hidden", !isAdmin());
+
+    const isAdmin = (state.profile && String(state.profile.role).toLowerCase()==="admin");
+    el("adminAddWaran").classList.toggle("hidden", !isAdmin);
 
     el("waranList").innerHTML = (data.waran||[]).map(w=>{
       const closed = String(w.statusWaran||"").toUpperCase()==="CLOSED";
@@ -350,6 +303,15 @@
             ${opts.map(o=>`<option ${String(b.statusBelanja).toUpperCase()===o?'selected':''} value="${o}">${o}</option>`).join("")}
           </select>
         `;
+
+        const deleteBtn = `
+          <button class="btn btn-danger opacity-50 cursor-not-allowed"
+                  disabled
+                  title="Delete dimansuhkan. Guna status BATAL.">
+            Delete
+          </button>
+        `;
+
         return `
           <tr class="border-b">
             <td class="py-3 pr-3 align-top text-sm">
@@ -366,7 +328,7 @@
               <div class="flex flex-col gap-2">
                 <button class="btn btn-dark" data-upd="${esc(b.belanjaId)}" ${closed?'disabled':''}>Update</button>
                 <button class="btn btn-outline" data-bedit="${esc(b.belanjaId)}" ${closed?'disabled':''}>Edit</button>
-                <button class="btn btn-danger" data-bdel="${esc(b.belanjaId)}" ${closed?'disabled':''}>Delete</button>
+                ${deleteBtn}
               </div>
             </td>
             <td class="py-3 pr-3 align-top text-sm">${esc(b.noDokumen||"")}</td>
@@ -374,6 +336,14 @@
           </tr>
         `;
       }).join("");
+
+      const waranDeleteBtn = `
+        <button class="btn btn-danger opacity-50 cursor-not-allowed"
+                disabled
+                title="Delete dimansuhkan untuk audit trail.">
+          Delete
+        </button>
+      `;
 
       return `
         <div class="card p-6">
@@ -385,8 +355,8 @@
             <div class="flex items-center gap-2 flex-wrap justify-end">
               ${statusPill}
               <button class="btn btn-outline" data-pdf="${esc(w.waranId)}">Export PDF</button>
-              ${isAdmin() ? `<button class="btn btn-outline" data-wedit="${esc(w.waranId)}">Edit</button>` : ``}
-              ${isAdmin() ? `<button class="btn btn-danger" data-wdel="${esc(w.waranId)}">Delete</button>` : ``}
+              ${isAdmin ? `<button class="btn btn-outline" data-wedit="${esc(w.waranId)}">Edit</button>` : ``}
+              ${isAdmin ? waranDeleteBtn : ``}
             </div>
           </div>
 
@@ -452,7 +422,6 @@
               </div>
             </div>
           </div>
-
         </div>
       `;
     }).join("");
@@ -504,10 +473,8 @@
         const sel = document.querySelector(`select[data-belanja="${CSS.escape(belanjaId)}"]`);
         const statusBelanja = sel ? sel.value : "";
         try{
-          toast("Updating status...", belanjaId);
           await api("updateBelanjaStatus", { token: state.token, belanjaId, statusBelanja });
           await refresh();
-          toast("Status updated", belanjaId);
         }catch(e){
           alert("Gagal update: " + (e.error || JSON.stringify(e)));
         }
@@ -534,7 +501,6 @@
 
         const w = (state.data.waran||[]).find(x=>x.waranId===waranId);
         try{
-          toast("Saving belanja...", w?.noWaran || waranId);
           await api("addBelanja", {
             token: state.token,
             waranId,
@@ -548,7 +514,6 @@
             catatan
           });
           await refresh();
-          toast("Belanja ditambah", w?.noWaran || waranId);
         }catch(e){
           alert("Gagal tambah belanja: " + (e.error || JSON.stringify(e)));
         }
@@ -560,7 +525,6 @@
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
         try{
-          toast("Generate PDF...", waranId);
           const r = await api("exportWaranPdf", { token: state.token, waranId });
           window.open(r.url, "_blank");
         }catch(e){
@@ -579,22 +543,6 @@
       };
     });
 
-    // Delete waran (admin) - soft delete + cascade
-    document.querySelectorAll("[data-wdel]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const waranId = btn.getAttribute("data-wdel");
-        if(!confirm("Confirm delete waran ini? Semua belanja bawah akan delete sekali (soft delete).")) return;
-        try{
-          toast("Deleting waran...", waranId);
-          await api("deleteWaran", { token: state.token, waranId });
-          await refresh();
-          toast("Waran deleted (soft)", waranId);
-        }catch(e){
-          alert("Gagal delete waran: " + (e.error || JSON.stringify(e)));
-        }
-      };
-    });
-
     // Edit belanja modal
     document.querySelectorAll("[data-bedit]").forEach(btn=>{
       btn.onclick = ()=>{
@@ -604,30 +552,6 @@
           if(b){ openBelanjaModal(w.waranId, b); return; }
         }
         alert("Belanja not found");
-      };
-    });
-
-    // Delete belanja (soft delete)
-    document.querySelectorAll("[data-bdel]").forEach(btn=>{
-      btn.onclick = async ()=>{
-        const belanjaId = btn.getAttribute("data-bdel");
-        if(!confirm("Confirm delete belanja ini? (soft delete)")) return;
-        try{
-          toast("Deleting belanja...", belanjaId);
-          await api("deleteBelanja", { token: state.token, belanjaId });
-          await refresh();
-          toast("Belanja deleted (soft)", belanjaId);
-        }catch(e){
-          // Bagi mesej detail kalau JSONP fail (script.onerror)
-          if (e && e.src) {
-            alert(
-              "Gagal delete belanja: " + (e.error || "JSONP error") +
-              "\n\nTIP: cuba buka SRC ini dalam tab baru (tengok dia return apa):\n" + e.src
-            );
-          } else {
-            alert("Gagal delete belanja: " + (e.error || JSON.stringify(e)));
-          }
-        }
       };
     });
   }
@@ -654,7 +578,6 @@
       el("mw_msg").textContent = "Saved.";
       closeWaranModal();
       await refresh();
-      toast("Waran updated", waranId);
     }catch(e){
       el("mw_msg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
     }
@@ -682,7 +605,6 @@
       el("mb_msg").textContent = "Saved.";
       closeBelanjaModal();
       await refresh();
-      toast("Belanja updated", belanjaId);
     }catch(e){
       el("mb_msg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
     }
@@ -712,7 +634,6 @@
           el("app").classList.remove("hidden");
           renderUserBox();
           await refresh();
-          toast("Login OK", state.profile.email);
         }catch(e){
           setAuthError("Login gagal: " + (e.error || JSON.stringify(e)));
         }
@@ -772,7 +693,6 @@
         el("app").classList.remove("hidden");
         renderUserBox();
         await refresh();
-        toast("Auto-login OK", me.email);
         return;
       }catch(e){
         localStorage.removeItem("LA_TOKEN");
