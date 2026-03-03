@@ -201,8 +201,6 @@
 <script>
   // ================== CONFIG ==================
   const CLIENT_ID = "637964120539-99tu5r1qa3k54vqbijvr4jtomj33o20d.apps.googleusercontent.com";
-
-  // ✅ WAJIB tukar kepada URL deploy TERBARU
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ_mFLmXqE5JscW6tuDJPukLiwskJ6E9PcvjDeMM92BiJ_ODBuzAiKfBsaq4iBvINx5w/exec";
 
   // ================== STATE ==================
@@ -210,8 +208,8 @@
     token: localStorage.getItem("LA_TOKEN") || "",
     profile: null,
     data: null,
-    modalWaran: null,   // store waran object
-    modalBelanja: null  // store belanja object
+    modalWaran: null,
+    modalBelanja: null
   };
 
   // ================== JSONP helper ==================
@@ -223,16 +221,19 @@
   function api(action, payload){
     return new Promise((resolve, reject)=>{
       const cb = "cb_" + Math.random().toString(36).slice(2);
+      let script;
+
       window[cb] = (resp)=>{
-        try { delete window[cb]; script.remove(); } catch(e){}
+        try { delete window[cb]; if (script) script.remove(); } catch(e){}
         if (!resp || resp.ok === false) reject(resp || {error:"Unknown error"});
         else resolve(resp.data);
       };
+
       const data = b64urlEncode(JSON.stringify(payload || {}));
-      const script = document.createElement("script");
+      script = document.createElement("script");
       script.src = `${SCRIPT_URL}?action=${encodeURIComponent(action)}&callback=${encodeURIComponent(cb)}&data=${encodeURIComponent(data)}`;
       script.onerror = ()=>{
-        try { delete window[cb]; script.remove(); } catch(e){}
+        try { delete window[cb]; if (script) script.remove(); } catch(e){}
         reject({error:"Failed to load JSONP"});
       };
       document.body.appendChild(script);
@@ -450,7 +451,6 @@
 
   // ================== Bind dynamic actions ==================
   function bindDynamicActions(){
-    // Update status belanja
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
@@ -465,7 +465,6 @@
       };
     });
 
-    // Add belanja
     document.querySelectorAll("[data-add]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-add");
@@ -504,7 +503,6 @@
       };
     });
 
-    // Export PDF
     document.querySelectorAll("[data-pdf]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
@@ -517,7 +515,6 @@
       };
     });
 
-    // Edit waran (admin)
     document.querySelectorAll("[data-wedit]").forEach(btn=>{
       btn.onclick = ()=>{
         const waranId = btn.getAttribute("data-wedit");
@@ -527,7 +524,6 @@
       };
     });
 
-    // Delete waran (admin)
     document.querySelectorAll("[data-wdel]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-wdel");
@@ -541,11 +537,9 @@
       };
     });
 
-    // Edit belanja modal
     document.querySelectorAll("[data-bedit]").forEach(btn=>{
       btn.onclick = ()=>{
         const belanjaId = btn.getAttribute("data-bedit");
-        // find in data
         for(const w of (state.data.waran||[])){
           const b = (w.belanja||[]).find(x=>x.belanjaId===belanjaId);
           if(b){ openBelanjaModal(w.waranId, b); return; }
@@ -554,7 +548,6 @@
       };
     });
 
-    // Delete belanja
     document.querySelectorAll("[data-bdel]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-bdel");
@@ -569,7 +562,6 @@
     });
   }
 
-  // Save waran modal
   el("btnSaveWaran").onclick = async ()=>{
     const waranId = el("mw_waranId").value.trim();
     const noWaran = el("mw_noWaran").value.trim();
@@ -596,7 +588,6 @@
     }
   };
 
-  // Save belanja modal
   el("btnSaveBelanja").onclick = async ()=>{
     const belanjaId = el("mb_belanjaId").value.trim();
     const tarikh = el("mb_tarikh").value;
@@ -692,7 +683,8 @@
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
-        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e)));
+        // ✅ FIXED: buang satu ')' yang buat page crash
+        el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
       }
     };
 
