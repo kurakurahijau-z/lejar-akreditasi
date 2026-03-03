@@ -212,7 +212,7 @@
     modalBelanja: null
   };
 
-  // ================== JSONP helper ==================
+  // ================== JSONP helper (hardened) ==================
   function b64urlEncode(str){
     return btoa(unescape(encodeURIComponent(str)))
       .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -221,22 +221,52 @@
   function api(action, payload){
     return new Promise((resolve, reject)=>{
       const cb = "cb_" + Math.random().toString(36).slice(2);
-      let script;
+      let script = null;
+      let done = false;
+      let retried = false;
+
+      function cleanup(){
+        try { delete window[cb]; } catch(e){}
+        try { if (script) script.remove(); } catch(e){}
+      }
+
+      const timeout = setTimeout(()=>{
+        if(done) return;
+        done = true;
+        cleanup();
+        reject({ error: "JSONP timeout" });
+      }, 15000);
 
       window[cb] = (resp)=>{
-        try { delete window[cb]; if (script) script.remove(); } catch(e){}
-        if (!resp || resp.ok === false) reject(resp || {error:"Unknown error"});
+        if(done) return;
+        done = true;
+        clearTimeout(timeout);
+        cleanup();
+        if (!resp || resp.ok === false) reject(resp || { error:"Unknown error" });
         else resolve(resp.data);
       };
 
-      const data = b64urlEncode(JSON.stringify(payload || {}));
-      script = document.createElement("script");
-      script.src = `${SCRIPT_URL}?action=${encodeURIComponent(action)}&callback=${encodeURIComponent(cb)}&data=${encodeURIComponent(data)}`;
-      script.onerror = ()=>{
-        try { delete window[cb]; if (script) script.remove(); } catch(e){}
-        reject({error:"Failed to load JSONP"});
-      };
-      document.body.appendChild(script);
+      function load(){
+        script = document.createElement("script");
+        const data = b64urlEncode(JSON.stringify(payload || {}));
+        script.src = `${SCRIPT_URL}?action=${encodeURIComponent(action)}&callback=${encodeURIComponent(cb)}&data=${encodeURIComponent(data)}&_ts=${Date.now()}`;
+        script.onerror = ()=>{
+          try { script.remove(); } catch(e){}
+          if(!retried){
+            retried = true;
+            setTimeout(load, 250);
+          }else{
+            if(done) return;
+            done = true;
+            clearTimeout(timeout);
+            cleanup();
+            reject({ error:"Failed to load JSONP" });
+          }
+        };
+        document.body.appendChild(script);
+      }
+
+      load();
     });
   }
 
@@ -451,6 +481,7 @@
 
   // ================== Bind dynamic actions ==================
   function bindDynamicActions(){
+    // Update status belanja
     document.querySelectorAll("[data-upd]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-upd");
@@ -465,10 +496,12 @@
       };
     });
 
+    // Add belanja
     document.querySelectorAll("[data-add]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-add");
         const get = (q)=>document.querySelector(q);
+
         const perihal = get(`[data-add-perihal="${CSS.escape(waranId)}"]`).value.trim();
         const amaun = get(`[data-add-amaun="${CSS.escape(waranId)}"]`).value.trim();
         const statusBelanja = get(`[data-add-status="${CSS.escape(waranId)}"]`).value;
@@ -503,6 +536,7 @@
       };
     });
 
+    // Export PDF
     document.querySelectorAll("[data-pdf]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-pdf");
@@ -515,6 +549,7 @@
       };
     });
 
+    // Edit waran (admin)
     document.querySelectorAll("[data-wedit]").forEach(btn=>{
       btn.onclick = ()=>{
         const waranId = btn.getAttribute("data-wedit");
@@ -524,6 +559,7 @@
       };
     });
 
+    // Delete waran (admin) cascade
     document.querySelectorAll("[data-wdel]").forEach(btn=>{
       btn.onclick = async ()=>{
         const waranId = btn.getAttribute("data-wdel");
@@ -537,6 +573,7 @@
       };
     });
 
+    // Edit belanja modal
     document.querySelectorAll("[data-bedit]").forEach(btn=>{
       btn.onclick = ()=>{
         const belanjaId = btn.getAttribute("data-bedit");
@@ -548,6 +585,7 @@
       };
     });
 
+    // Delete belanja
     document.querySelectorAll("[data-bdel]").forEach(btn=>{
       btn.onclick = async ()=>{
         const belanjaId = btn.getAttribute("data-bdel");
@@ -562,6 +600,7 @@
     });
   }
 
+  // Save waran modal
   el("btnSaveWaran").onclick = async ()=>{
     const waranId = el("mw_waranId").value.trim();
     const noWaran = el("mw_noWaran").value.trim();
@@ -588,6 +627,7 @@
     }
   };
 
+  // Save belanja modal
   el("btnSaveBelanja").onclick = async ()=>{
     const belanjaId = el("mb_belanjaId").value.trim();
     const tarikh = el("mb_tarikh").value;
@@ -683,7 +723,7 @@
         el("w_noWaran").value=""; el("w_perihal").value=""; el("w_jumlah").value=""; el("w_tahun").value=""; el("w_catatan").value="";
         await refresh();
       }catch(e){
-        // ✅ FIXED: buang satu ')' yang buat page crash
+        // ✅ FIX: buang extra ')'
         el("addWaranMsg").textContent = "Gagal: " + (e.error || JSON.stringify(e));
       }
     };
