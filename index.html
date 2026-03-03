@@ -7,8 +7,196 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
- 
+  <style>
+    body{ background: linear-gradient(180deg,#f6f8ff,#f4fbff); }
+    .card{ border:1px solid rgba(15,23,42,.08); border-radius:18px; background:#fff; box-shadow: 0 10px 25px rgba(2,6,23,.05); }
+    .pill{ border:1px solid rgba(15,23,42,.08); border-radius:999px; padding:2px 10px; font-size:12px; }
+    .btn{ border-radius: 12px; padding: 10px 14px; font-weight: 800; }
+    .btn-primary{ background:#2563eb; color:#fff; }
+    .btn-dark{ background:#0f172a; color:#fff; }
+    .btn-outline{ border:1px solid rgba(15,23,42,.14); background:#fff; color:#0f172a; }
+    .btn-danger{ background:#dc2626; color:#fff; }
+    .input{ border:1px solid rgba(15,23,42,.12); border-radius:12px; padding:10px 12px; width:100%; }
+    .muted{ color:#64748b; }
+    .mini{ font-size:12px; color:#64748b; }
+    .disabledWrap{ opacity:.55; pointer-events:none; filter:grayscale(.1); }
+    .modalBack{ position:fixed; inset:0; background:rgba(2,6,23,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:999; }
+    .modal{ width:min(720px,100%); }
+  </style>
+</head>
 
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="card p-7">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-extrabold text-slate-900">Lejar Akreditasi</h1>
+          <p class="muted mt-2">Track penerimaan waran & perbelanjaan ikut kod waran (Committed ikut status). Internal jabatan sahaja.</p>
+        </div>
+        <div id="userBox" class="text-right"></div>
+      </div>
+    </div>
+
+    <!-- Auth -->
+    <div id="authCard" class="card p-7 mt-6">
+      <h2 class="text-xl font-bold text-slate-900">Sila login</h2>
+      <p class="muted mt-1">Whitelist sahaja boleh masuk. (JSONP — confirm tak kena CORS)</p>
+
+      <div class="mt-4 flex flex-col gap-3">
+        <div id="googleBtn"></div>
+        <div id="authErr" class="text-red-600 font-semibold"></div>
+      </div>
+    </div>
+
+    <!-- App -->
+    <div id="app" class="hidden">
+      <!-- Controls -->
+      <div class="card p-6 mt-6">
+        <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <div class="flex flex-col md:flex-row gap-3 md:items-center">
+            <select id="yearFilter" class="input md:w-44"></select>
+            <input id="q" class="input md:w-[28rem]" placeholder="Cari NoWaran / Perihal / Payee / No Dokumen..." />
+            <button class="btn btn-dark" id="btnSearch">Cari</button>
+            <button class="btn btn-outline" id="btnClear">Reset</button>
+          </div>
+          <div class="flex items-center gap-3 justify-between md:justify-end">
+            <div class="mini" id="lastSync"></div>
+            <button class="btn btn-dark" id="btnRefresh">Refresh</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="card p-6 mt-6">
+        <h2 class="text-xl font-bold text-slate-900">Ringkasan</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL PENERIMAAN</div>
+            <div class="text-2xl font-extrabold" id="sumPenerimaan">RM 0</div>
+            <div class="text-xs muted mt-1">Jumlah semua waran (exclude CLOSED)</div>
+          </div>
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL COMMITTED</div>
+            <div class="text-2xl font-extrabold" id="sumCommitted">RM 0</div>
+            <div class="text-xs muted mt-1">HANTAR PERMOHONAN + SELESAI</div>
+          </div>
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL DRAFT</div>
+            <div class="text-2xl font-extrabold" id="sumDraft">RM 0</div>
+            <div class="text-xs muted mt-1">KERTAS KERJA + BATAL</div>
+          </div>
+          <div class="card p-4">
+            <div class="text-sm muted">TOTAL AVAILABLE</div>
+            <div class="text-2xl font-extrabold" id="sumAvailable">RM 0</div>
+            <div class="text-xs muted mt-1">TotalWaran – Committed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add waran (admin only) -->
+      <div id="adminAddWaran" class="card p-6 mt-6 hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Tambah Waran</h2>
+            <p class="muted text-sm">Waran baru akan muncul sebagai card.</p>
+          </div>
+          <span class="pill bg-emerald-50 text-emerald-700 font-bold">ADMIN MODE</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4">
+          <input id="w_noWaran" class="input" placeholder="No Waran" />
+          <input id="w_tarikh" type="date" class="input" />
+          <input id="w_perihal" class="input md:col-span-2" placeholder="Perihal" />
+          <input id="w_jumlah" class="input" placeholder="Jumlah (RM)" inputmode="decimal" />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <input id="w_tahun" class="input" placeholder="Tahun (auto jika kosong)" />
+          <select id="w_status" class="input">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="CLOSED">CLOSED</option>
+          </select>
+          <input id="w_catatan" class="input md:col-span-2" placeholder="Catatan (optional)" />
+        </div>
+
+        <div class="flex items-center gap-3 mt-4">
+          <button class="btn btn-primary" id="btnAddWaran">Tambah Waran</button>
+          <div id="addWaranMsg" class="muted text-sm"></div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="card p-6 mt-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-bold text-slate-900">Waran</h2>
+          <div class="muted text-sm" id="countWaran"></div>
+        </div>
+
+        <div id="waranList" class="mt-4 flex flex-col gap-6"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Waran -->
+  <div id="modalWaranBack" class="modalBack">
+    <div class="modal card p-6">
+      <div class="flex items-center justify-between">
+        <div class="text-lg font-extrabold">Edit Waran</div>
+        <button class="btn btn-outline" id="btnCloseWaranModal">Tutup</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <input id="mw_waranId" class="input" placeholder="WaranID" disabled />
+        <input id="mw_noWaran" class="input" placeholder="No Waran" />
+        <input id="mw_tarikhTerima" type="date" class="input" />
+        <input id="mw_tahun" class="input" placeholder="Tahun" />
+        <input id="mw_perihal" class="input md:col-span-2" placeholder="Perihal" />
+        <input id="mw_jumlahWaran" class="input" placeholder="Jumlah (RM)" inputmode="decimal" />
+        <select id="mw_statusWaran" class="input">
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+        <input id="mw_catatan" class="input md:col-span-2" placeholder="Catatan" />
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button class="btn btn-primary" id="btnSaveWaran">Save</button>
+        <div class="muted text-sm" id="mw_msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Belanja -->
+  <div id="modalBelanjaBack" class="modalBack">
+    <div class="modal card p-6">
+      <div class="flex items-center justify-between">
+        <div class="text-lg font-extrabold">Edit Belanja</div>
+        <button class="btn btn-outline" id="btnCloseBelanjaModal">Tutup</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <input id="mb_belanjaId" class="input" placeholder="BelanjaID" disabled />
+        <input id="mb_waranId" class="input" placeholder="WaranID" disabled />
+        <input id="mb_tarikh" type="date" class="input" />
+        <input id="mb_amaun" class="input" placeholder="Amaun" inputmode="decimal" />
+        <input id="mb_perihal" class="input md:col-span-2" placeholder="Perihal" />
+        <select id="mb_status" class="input">
+          <option>KERTAS KERJA</option>
+          <option>HANTAR PERMOHONAN</option>
+          <option>SELESAI</option>
+          <option>BATAL</option>
+        </select>
+        <input id="mb_noDokumen" class="input" placeholder="No Dokumen" />
+        <input id="mb_payee" class="input md:col-span-2" placeholder="Payee" />
+        <input id="mb_catatan" class="input md:col-span-2" placeholder="Catatan" />
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button class="btn btn-primary" id="btnSaveBelanja">Save</button>
+        <div class="muted text-sm" id="mb_msg"></div>
+      </div>
+    </div>
+  </div>
 
 <script>
   // ================== CONFIG ==================
